@@ -27,6 +27,7 @@ namespace DiscoData2API.Controllers
             [HttpPost("{id}")]
             public async Task<ActionResult<string>> PostQuery(string id, [FromBody] QueryRequest request)
             {
+                  id = "672b84ef75e2d0b792658f24";   //for debugging purposes
                   _logger.LogInformation($"Received query request for id {id} with fields {request.Fields}, filters {request.Filters}, limit {request.Limit}, and offset {request.Offset}");
                   MongoDocument mongoDoc = await _mongoService.GetById(id);
 
