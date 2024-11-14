@@ -1,4 +1,4 @@
-namespace DiscoData2API
+namespace DiscoData2API.Class
 {
       public class QueryRequest
       {

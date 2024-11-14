@@ -17,15 +17,15 @@ namespace DiscoData2API.Controllers
             _dremioService = dremioService;
         }
 
-        // [HttpGet("GetToken")]
-        // public async Task<string> GetToken()
-        // {
-        //     var token = await _dremioService.GetToken();
-        //     if (token == null)
-        //     {
-        //         return "Token is null";
-        //     }
-        //     return token;
-        // }
+        [HttpGet("GetToken")]
+        public async Task<string> GetToken()
+        {
+            var login = await _dremioService.ApiLogin();
+            if (login != null)
+            {
+                return login?.Token ?? "Token is null";
+            }
+            return "Token is null";
+        }
     }
 }

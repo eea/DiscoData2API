@@ -1,3 +1,4 @@
+using DiscoData2API.Class;
 using DiscoData2API.Models;
 using DiscoData2API.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -19,13 +20,13 @@ namespace DiscoData2API.Controllers
             }
 
             [HttpGet("GetCatalog")]
-            public async Task<ActionResult<List<MongoDocument>>> GetCatalog()
+            public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
             {
                   return await _mongoService.GetAllAsync();
             }
 
             [HttpPost("{id}")]
-            public async Task<ActionResult<string>> PostQuery(string id, [FromBody] QueryRequest request)
+            public async Task<ActionResult<string>> GetDremioQuery(string id, [FromBody] QueryRequest request)
             {
                   id = "672b84ef75e2d0b792658f24";   //for debugging purposes
                   _logger.LogInformation($"Received query request for id {id} with fields {request.Fields}, filters {request.Filters}, limit {request.Limit}, and offset {request.Offset}");
@@ -36,22 +37,12 @@ namespace DiscoData2API.Controllers
                         _logger.LogError($"Query with id {id} not found");
                         return NotFound();
                   }
-
-                  string? dremioToken = await _dremioService.GetToken();
-
-                  if(dremioToken == null)
-                  {
-                        _logger.LogError("Dremio token is null");
-                        return StatusCode(500);
-                  }
-                  else
-                  {
-                        _logger.LogInformation("Dremio token received");
-                         //Execute the query and return the result   
-                  }     
-
-                
-                  return Ok(mongoDoc.Query);
+                 
+                  _logger.LogInformation("Dremio token received");
+                  string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
+                  var toto = await _dremioService.ExecuteQuery(source, 100);
+                  
+                  return toto;
             }
       }
 }

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DiscoData2API.Class;
 using DiscoData2API.Misc;
 using Microsoft.Extensions.Options;
 
@@ -23,9 +24,60 @@ namespace DiscoData2API.Services
             _username = dremioSettings.Value.Username;
             _password = dremioSettings.Value.Password;
             _dremioServer = dremioSettings.Value.DremioServer;
+            _authToken = string.Empty;
         }
 
-        public async Task<bool> ApiLogin()
+        public async Task<string> ExecuteQuery(string source, int limit = 100)
+        {
+            const int pollingIntervalMs = 500; // Check every 500ms
+            const int timeoutMs = 10000; // Timeout after 10 seconds
+            var elapsedTime = 0;
+
+            // Login to Dremio and get the token    
+            DremioLogin login = await ApiLogin();
+            if (string.IsNullOrEmpty(login.Token))
+            {
+                _logger.LogError("Dremio token is null for login user");
+                return "";
+            }
+            _authToken = login.Token;
+            
+            //Create the query and submit it to Dremio
+            var query = $"SELECT * FROM {source} LIMIT {limit}";
+            var jobId = await ApiPost<DremioJob>($"sql", new { sql = query });
+
+            if (jobId == null)
+            {
+                _logger.LogError("Dremio job ID is null");
+                return "";
+            }
+
+            // Poll the job status until it's completed
+            while (elapsedTime < timeoutMs)
+            {
+                var jobStatus = await ApiGet<DremioJobStatus>($"job/{jobId.Id}");
+
+                if (jobStatus.JobState == MyEnum.JobStatus.COMPLETED.ToString())
+                {
+                    // Job is completed, fetch the results
+                    var jobResults = await ApiGet($"job/{jobId.Id}/results?offset=0&limit={limit}");
+                    return jobResults;
+                }
+                else if (jobStatus.JobState == MyEnum.JobStatus.FAILED.ToString() || jobStatus.JobState == MyEnum.JobStatus.CANCELED.ToString())
+                {
+                    _logger.LogError($"Dremio Job {jobId.Id} ended with status: {jobStatus.JobState}");
+                    return "";
+                }
+
+                await Task.Delay(pollingIntervalMs);
+                elapsedTime += pollingIntervalMs;
+            }
+
+            _logger.LogError($"Job {jobId.Id} timed out.");
+            return "";
+        }
+
+        public async Task<DremioLogin> ApiLogin()
         {
             try
             {
@@ -40,22 +92,25 @@ namespace DiscoData2API.Services
 
                 // Parse the response to retrieve the token
                 var responseData = await response.Content.ReadAsStringAsync();
-                var responseJson = JsonSerializer.Deserialize<LoginResponse>(responseData);
+                var responseJson = JsonSerializer.Deserialize<DremioLogin>(responseData);
 
                 if (responseJson == null || string.IsNullOrEmpty(responseJson.Token))
                 {
                     _logger.LogWarning("Dremio Token not found in response");
-                    return false;
+                    return null;
                 }
-
-                _authToken = responseJson.Token;
-                return true;
+                return responseJson;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while getting token from Dremio.");
-                return false;
+                return null;
             }
+        }
+
+        public async Task<string> ApiGet(string endpoint)
+        {
+            return await ApiGet<string>(endpoint);
         }
 
         public async Task<T> ApiGet<T>(string endpoint)
@@ -67,20 +122,29 @@ namespace DiscoData2API.Services
 
             try
             {
+                var url = $"{_dremioServer}/api/v3/{endpoint}";
                 Client.DefaultRequestHeaders.Clear();
                 Client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_authToken}");
-                Client.DefaultRequestHeaders.Add("Content-Type", "application/json");
 
-                var url = $"{_dremioServer}/api/v3/{endpoint}";
                 var response = await Client.GetAsync(url);
-
                 if (!response.IsSuccessStatusCode)
                 {
                     throw new Exception($"Request failed with status code: {response.StatusCode}");
                 }
 
-                var responseString = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<T>(responseString);
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                if (typeof(T) == typeof(string))
+                {
+                    return (T)Convert.ChangeType(jsonResponse, typeof(T));
+                }
+                else
+                {
+                    return JsonSerializer.Deserialize<T>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    })!;
+                }
+
             }
             catch (Exception ex)
             {
@@ -102,7 +166,6 @@ namespace DiscoData2API.Services
                 var url = $"{_dremioServer}/api/v3/{endpoint}";
                 Client.DefaultRequestHeaders.Clear();
                 Client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_authToken}");
-                Client.DefaultRequestHeaders.Add("Content-Type", "application/json");
 
                 // Make the POST request
                 var response = await Client.PostAsync(url, content);
@@ -117,12 +180,6 @@ namespace DiscoData2API.Services
                 Console.WriteLine($"Error while making POST request to {endpoint}: {ex.Message}");
                 throw;
             }
-        }
-
-        public class LoginResponse
-        {
-            [JsonPropertyName("token")]
-            public string Token { get; set; }
         }
     }
 }

@@ -18,7 +18,7 @@ namespace DiscoData2API.Services
             }
 
             public async Task<List<MongoDocument>> GetAllAsync()
-            {     
+            {
                   try
                   {
                         return await _collection.Find(_ => true).ToListAsync();
