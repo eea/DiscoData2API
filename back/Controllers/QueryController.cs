@@ -12,6 +12,10 @@ namespace DiscoData2API.Controllers
             private readonly ILogger<QueryController> _logger;
              private readonly MongoService _mongoService;
             private readonly DremioService _dremioService;
+            private int offset = 0;
+            private int limit = 200;
+            private string fields = "*";
+
             public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
             {
                   _logger = logger; 
@@ -26,9 +30,15 @@ namespace DiscoData2API.Controllers
             }
 
             [HttpPost("{id}")]
-            public async Task<ActionResult<string>> GetDremioQuery(string id, [FromBody] QueryRequest request)
+            public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
             {
-                  id = "672b84ef75e2d0b792658f24";   //for debugging purposes
+                   id = "672b84ef75e2d0b792658f24";   //for debugging purposes
+
+
+                  limit = request.Limit.HasValue && request.Limit != 0 ? request.Limit.Value : limit;
+                  offset = request.Offset.HasValue && request.Offset != 0 ? request.Offset.Value : offset;
+                  fields = request.Fields != null ? string.Join(",", request.Fields) : fields;
+
                   _logger.LogInformation($"Received query request for id {id} with fields {request.Fields}, filters {request.Filters}, limit {request.Limit}, and offset {request.Offset}");
                   MongoDocument mongoDoc = await _mongoService.GetById(id);
 
@@ -37,10 +47,12 @@ namespace DiscoData2API.Controllers
                         _logger.LogError($"Query with id {id} not found");
                         return NotFound();
                   }
+
+                  mongoDoc.Query = mongoDoc.Query.Replace("*", fields);
                  
-                  _logger.LogInformation("Dremio token received");
-                  string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
-                  var toto = await _dremioService.ExecuteQuery(source, 100);
+                  //string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
+                  //var query = $"SELECT {table} FROM {source} LIMIT 500";
+                  var toto = await _dremioService.ExecuteQuery(mongoDoc.Query, offset , limit);
                   
                   return toto;
             }

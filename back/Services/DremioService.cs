@@ -17,6 +17,9 @@ namespace DiscoData2API.Services
         private readonly string _dremioServer;
         private static readonly HttpClient Client = new HttpClient();
         private string _authToken;
+        private const int pollingIntervalMs = 500; // Check every 500ms
+        private const int timeoutMs = 10000; // Timeout after 10 seconds
+        private int elapsedTime = 0;
 
         public DremioService(IOptions<DremioSettings> dremioSettings, ILogger<DremioService> logger)
         {
@@ -27,12 +30,8 @@ namespace DiscoData2API.Services
             _authToken = string.Empty;
         }
 
-        public async Task<string> ExecuteQuery(string source, int limit = 100)
+        public async Task<string> ExecuteQuery(string query, int offset = 0, int limit = 200)
         {
-            const int pollingIntervalMs = 500; // Check every 500ms
-            const int timeoutMs = 10000; // Timeout after 10 seconds
-            var elapsedTime = 0;
-
             // Login to Dremio and get the token    
             DremioLogin login = await ApiLogin();
             if (string.IsNullOrEmpty(login.Token))
@@ -40,10 +39,9 @@ namespace DiscoData2API.Services
                 _logger.LogError("Dremio token is null for login user");
                 return "";
             }
+
             _authToken = login.Token;
-            
-            //Create the query and submit it to Dremio
-            var query = $"SELECT * FROM {source} LIMIT {limit}";
+
             var jobId = await ApiPost<DremioJob>($"sql", new { sql = query });
 
             if (jobId == null)
@@ -60,7 +58,7 @@ namespace DiscoData2API.Services
                 if (jobStatus.JobState == MyEnum.JobStatus.COMPLETED.ToString())
                 {
                     // Job is completed, fetch the results
-                    var jobResults = await ApiGet($"job/{jobId.Id}/results?offset=0&limit={limit}");
+                    var jobResults = await ApiGet($"job/{jobId.Id}/results?offset={offset}&limit={limit}");   //here we have to change the code to chunk the results incrementing offset by the limit
                     return jobResults;
                 }
                 else if (jobStatus.JobState == MyEnum.JobStatus.FAILED.ToString() || jobStatus.JobState == MyEnum.JobStatus.CANCELED.ToString())

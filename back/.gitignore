@@ -24,7 +24,6 @@ out/
 .vscode/*.*           # VS Code workspace settings
 .idea/                # Rider/IntelliJ IDE settings
 *.code-workspace
-*.sln
 *.sln.cache
 .vscode/settings.json
 
