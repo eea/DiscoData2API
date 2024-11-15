@@ -23,13 +23,20 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseStaticFiles(); //added for swagger yaml file
+
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
+    // app.UseSwaggerUI(c =>
+    // {
+    //     c.SwaggerEndpoint("/swagger.yaml", "API V1"); //added for swagger yaml file
+    // });
 }
+
 
 app.UseHttpsRedirection();
 

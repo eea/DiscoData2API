@@ -16,6 +16,9 @@ namespace DiscoData2API.Controllers
             private int limit = 200;
             private string fields = "*";
 
+                  //string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
+                  //var query = $"SELECT {table} FROM {source} LIMIT 500";
+
             public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
             {
                   _logger = logger; 
@@ -35,11 +38,9 @@ namespace DiscoData2API.Controllers
                    id = "672b84ef75e2d0b792658f24";   //for debugging purposes
 
 
-                  limit = request.Limit.HasValue && request.Limit != 0 ? request.Limit.Value : limit;
-                  offset = request.Offset.HasValue && request.Offset != 0 ? request.Offset.Value : offset;
-                  fields = request.Fields != null ? string.Join(",", request.Fields) : fields;
+                 
 
-                  _logger.LogInformation($"Received query request for id {id} with fields {request.Fields}, filters {request.Filters}, limit {request.Limit}, and offset {request.Offset}");
+      
                   MongoDocument mongoDoc = await _mongoService.GetById(id);
 
                   if (mongoDoc == null)
@@ -48,13 +49,15 @@ namespace DiscoData2API.Controllers
                         return NotFound();
                   }
 
-                  mongoDoc.Query = mongoDoc.Query.Replace("*", fields);
+                  //Upadate the qury is needed here
+                  // limit = request.Limit.HasValue && request.Limit != 0 ? request.Limit.Value : limit;
+                  // offset = request.Offset.HasValue && request.Offset != 0 ? request.Offset.Value : offset;
+                  // fields = request.Fields != null ? string.Join(",", request.Fields) : fields;
+                  // mongoDoc.Query = mongoDoc.Query.Replace("*", fields);
                  
-                  //string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
-                  //var query = $"SELECT {table} FROM {source} LIMIT 500";
-                  var toto = await _dremioService.ExecuteQuery(mongoDoc.Query, offset , limit);
+                  var result = await _dremioService.ExecuteQuery(mongoDoc.Query, offset , limit);
                   
-                  return toto;
+                  return result;
             }
       }
 }
