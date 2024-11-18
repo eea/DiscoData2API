@@ -1,5 +1,6 @@
 using DiscoData2API.Misc;
 using DiscoData2API.Services;
+using Microsoft.OpenApi.Models;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,26 +18,33 @@ builder.Services.Configure<MongoSettings>(builder.Configuration.GetSection("Mong
 builder.Services.Configure<DremioSettings>(builder.Configuration.GetSection("DremioSettings"));
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
+builder.Services.AddSingleton<DremioServiceBeta>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Query API",
+        Version = "v1",
+        Description = "API for executing queries.",
+    });
+});
 
 var app = builder.Build();
-
-app.UseStaticFiles(); //added for swagger yaml file
 
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
-    // app.UseSwaggerUI(c =>
-    // {
-    //     c.SwaggerEndpoint("/swagger.yaml", "API V1"); //added for swagger yaml file
-    // });
+    //app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+    });
 }
-
 
 app.UseHttpsRedirection();
 

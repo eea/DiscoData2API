@@ -1,25 +1,24 @@
-using System.Text;
+using Apache.Arrow.Flight;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using Apache.Arrow;
+using Grpc.Net.Client;
+using Apache.Arrow.Flight.Client;
+using Grpc.Core;
+using System.Text;
 using DiscoData2API.Class;
-using DiscoData2API.Misc;
 using Microsoft.Extensions.Options;
-
-// https://www.dremio.com/resources/tutorials/using-the-rest-api/
+using DiscoData2API.Misc;
 
 namespace DiscoData2API.Services
 {
     public class DremioService
     {
         private readonly ILogger<DremioService> _logger;
-        private readonly string _username;
-        private readonly string _password;
-        private readonly string _dremioServer;
-        private static readonly HttpClient Client = new HttpClient();
-        private string _authToken;
-        private const int pollingIntervalMs = 500; // Check every 500ms
-        private const int timeoutMs = 10000; // Timeout after 10 seconds
-        private int elapsedTime = 0;
+        private readonly string? _username;
+        private readonly string? _password;
+        private readonly string? _dremioServer;
+        private string? _dremioServerAuth;
+        private FlightClient _flightClient;
 
         public DremioService(IOptions<DremioSettings> dremioSettings, ILogger<DremioService> logger)
         {
@@ -27,56 +26,60 @@ namespace DiscoData2API.Services
             _username = dremioSettings.Value.Username;
             _password = dremioSettings.Value.Password;
             _dremioServer = dremioSettings.Value.DremioServer;
-            _authToken = string.Empty;
+            _dremioServerAuth = dremioSettings.Value.DremioServerAuth;
+            _flightClient = InitializeFlightClient();
         }
 
-        public async Task<string> ExecuteQuery(string query, int offset = 0, int limit = 200)
+        public async Task<string> ExecuteQuery(string query)
         {
-            // Login to Dremio and get the token    
-            DremioLogin login = await ApiLogin();
-            if (string.IsNullOrEmpty(login.Token))
+            string jsonResult = string.Empty;
+            try
             {
-                _logger.LogError("Dremio token is null for login user");
-                return "";
-            }
+                // Authenticate and obtain token
+                var token = await Authenticate();
+                var headers = new Metadata { { "authorization", $"Bearer {token}" } };
 
-            _authToken = login.Token;
+                // Prepare the FlightDescriptor for the query
+                var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
 
-            var jobId = await ApiPost<DremioJob>($"sql", new { sql = query });
+                // Fetch FlightInfo for the query
+                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync;
 
-            if (jobId == null)
-            {
-                _logger.LogError("Dremio job ID is null");
-                return "";
-            }
-
-            // Poll the job status until it's completed
-            while (elapsedTime < timeoutMs)
-            {
-                var jobStatus = await ApiGet<DremioJobStatus>($"job/{jobId.Id}");
-
-                if (jobStatus.JobState == MyEnum.JobStatus.COMPLETED.ToString())
+                // Iterate over the returned tickets from FlightInfo
+                foreach (var endpoint in flightInfo.Endpoints)
                 {
-                    // Job is completed, fetch the results
-                    var jobResults = await ApiGet($"job/{jobId.Id}/results?offset={offset}&limit={limit}");   //here we have to change the code to chunk the results incrementing offset by the limit
-                    return jobResults;
-                }
-                else if (jobStatus.JobState == MyEnum.JobStatus.FAILED.ToString() || jobStatus.JobState == MyEnum.JobStatus.CANCELED.ToString())
-                {
-                    _logger.LogError($"Dremio Job {jobId.Id} ended with status: {jobStatus.JobState}");
-                    return "";
+                    // Each endpoint provides a ticket for data retrieval
+                    var ticket = endpoint.Ticket;
+
+                    // Open a stream for the ticket
+                    using var stream = _flightClient.GetStream(ticket, headers);
+
+                    // Process stream of Arrow RecordBatches
+                    while (await stream.ResponseStream.MoveNext())
+                    {
+                        var current = stream.ResponseStream.Current;
+
+                        var arrays = stream.ResponseStream.Current.Arrays.ToList();
+                        // Convert RecordBatch to a serializable format
+                        jsonResult = ConvertRecordBatchToJson(current);
+
+                        // Write the JSON result to a file for debugging
+                        //await File.WriteAllTextAsync("output.json", jsonResult);
+                    }
                 }
 
-                await Task.Delay(pollingIntervalMs);
-                elapsedTime += pollingIntervalMs;
+                return jsonResult;
             }
-
-            _logger.LogError($"Job {jobId.Id} timed out.");
-            return "";
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while executing query via Arrow Flight.");
+                throw;
+            }
         }
 
         public async Task<DremioLogin> ApiLogin()
         {
+            HttpClient Client = new HttpClient();
             try
             {
                 // Prepare login data as JSON
@@ -105,79 +108,91 @@ namespace DiscoData2API.Services
                 return null;
             }
         }
+        
+        #region Helpers
 
-        public async Task<string> ApiGet(string endpoint)
+        private FlightClient InitializeFlightClient()
         {
-            return await ApiGet<string>(endpoint);
+            var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+            return new FlightClient(channel);
         }
 
-        public async Task<T> ApiGet<T>(string endpoint)
+        private string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
-            if (string.IsNullOrEmpty(_authToken))
+            var data = new List<Dictionary<string, object>>();
+
+            // Iterate over rows first
+            for (int i = 0; i < recordBatch.Length; i++)
             {
-                throw new InvalidOperationException("You must login first to obtain the authorization token.");
-            }
+                var rowData = new Dictionary<string, object>();
 
-            try
-            {
-                var url = $"{_dremioServer}/api/v3/{endpoint}";
-                Client.DefaultRequestHeaders.Clear();
-                Client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_authToken}");
+                // For each row, iterate over columns
+                foreach (var column in recordBatch.Schema.Fields.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
+                {
+                    string columnName = column.field.Value.Name;
 
-                var response = await Client.GetAsync(url);
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new Exception($"Request failed with status code: {response.StatusCode}");
-                }
-
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-                if (typeof(T) == typeof(string))
-                {
-                    return (T)Convert.ChangeType(jsonResponse, typeof(T));
-                }
-                else
-                {
-                    return JsonSerializer.Deserialize<T>(jsonResponse, new JsonSerializerOptions
+                    switch (column.array)
                     {
-                        PropertyNameCaseInsensitive = true
-                    })!;
+                        case Int32Array int32Array:
+                            rowData[columnName] = int32Array.Values[i];
+                            break;
+                        case Int64Array int64Array:
+                            rowData[columnName] = int64Array.Values[i];
+                            break;
+                        case DoubleArray doubleArray:
+                            rowData[columnName] = doubleArray.Values[i];
+                            break;
+                        case Decimal128Array decimal128Array:
+                            rowData[columnName] = decimal128Array.GetValue(i);
+                            break;
+                        case StringArray stringArray:
+                            rowData[columnName] = stringArray.GetString(i);
+                            break;
+                        // Add cases for other array types as needed
+                        default:
+                            rowData[columnName] = "Unsupported array type";
+                            break;
+                    }
                 }
 
+                data.Add(rowData);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error while making GET request to endpoint: {endpoint}");
-                throw;
-            }
+
+            return JsonSerializer.Serialize(data);
         }
 
-        public async Task<T?> ApiPost<T>(string endpoint, object? body = null)
+        private async Task<string> Authenticate()
         {
             try
             {
-                // Set up the request content with the JSON body, if provided
-                var content = body != null
-                    ? new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
-                    : null;
+                // Prepare login payload
+                var loginData = new { userName = _username, password = _password };
+                var jsonLoginData = JsonSerializer.Serialize(loginData);
+                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
-                // Set up the request URL and headers
-                var url = $"{_dremioServer}/api/v3/{endpoint}";
-                Client.DefaultRequestHeaders.Clear();
-                Client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_authToken}");
+                // Make the POST request for authentication
+                using var client = new HttpClient();
+                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
+                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
+                response.EnsureSuccessStatusCode();
 
-                // Make the POST request
-                var response = await Client.PostAsync(url, content);
-                response.EnsureSuccessStatusCode(); // Throws if not successful
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var loginResponse = JsonSerializer.Deserialize<DremioLogin>(responseContent);
 
-                // Read and process the response content
-                var responseText = await response.Content.ReadAsStringAsync();
-                return string.IsNullOrWhiteSpace(responseText) ? default : JsonSerializer.Deserialize<T>(responseText);
+                if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
+                {
+                    throw new Exception("Failed to authenticate with Dremio. Token not received.");
+                }
+
+                return loginResponse.Token;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error while making POST request to {endpoint}: {ex.Message}");
+                _logger.LogError(ex, "Error while authenticating with Dremio.");
                 throw;
             }
         }
+
+        #endregion
     }
 }

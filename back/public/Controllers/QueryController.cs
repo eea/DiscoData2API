@@ -5,59 +5,65 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
 {
-      [ApiController]
-      [Route("api/[controller]")]
-      public class QueryController : ControllerBase
-      {
-            private readonly ILogger<QueryController> _logger;
-             private readonly MongoService _mongoService;
-            private readonly DremioService _dremioService;
-            private int offset = 0;
-            private int limit = 200;
-            private string fields = "*";
+    [ApiController]
+    [Route("api/[controller]")]
+    public class QueryController : ControllerBase
+    {
+        private readonly ILogger<QueryController> _logger;
+        private readonly MongoService _mongoService;
+        private readonly DremioService _dremioService;
+        private int defaultLimit = 150000;
 
-                  //string source = "\"Local S3\".\"datahub-pre-01\".discodata.CO2_emissions.latest.co2cars";
-                  //var query = $"SELECT {table} FROM {source} LIMIT 500";
+        public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
+        {
+            _logger = logger;
+            _mongoService = mongoService;
+            _dremioService = dremioService;
+        }
 
-            public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
+        [HttpGet("GetCatalog")]
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
+        {
+            return await _mongoService.GetAllAsync();
+        }
+
+        [HttpPost("{id}")]
+        public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
+        {
+            id = "672b84ef75e2d0b792658f24";   //for debugging purposes
+            MongoDocument mongoDoc = await _mongoService.GetById(id);
+
+            if (mongoDoc == null)
             {
-                  _logger = logger; 
-                  _mongoService = mongoService;
-                  _dremioService = dremioService;
+                _logger.LogError($"Query with id {id} not found");
+                return NotFound();
             }
 
-            [HttpGet("GetCatalog")]
-            public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
+            mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+
+            var result = await _dremioService.ExecuteQuery(mongoDoc.Query);
+
+            return result;
+        }
+
+        private string UpdateQueryString(string query, string[]? fields, int? limit)
+        {
+            //Update fields returned by query
+            fields = fields != null ? fields : new string[] { "*" };
+            query = query.Replace("*", string.Join(",", fields));
+
+            //Update limit of query
+            limit = limit.HasValue && limit != 0 ? limit.Value : defaultLimit;
+            if (query.Contains("LIMIT"))
             {
-                  return await _mongoService.GetAllAsync();
+                query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", $"LIMIT {limit}");
+            }
+            else
+            {
+                query += $" LIMIT {limit}";
             }
 
-            [HttpPost("{id}")]
-            public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
-            {
-                   id = "672b84ef75e2d0b792658f24";   //for debugging purposes
-
-
-                 
-
-      
-                  MongoDocument mongoDoc = await _mongoService.GetById(id);
-
-                  if (mongoDoc == null)
-                  {
-                        _logger.LogError($"Query with id {id} not found");
-                        return NotFound();
-                  }
-
-                  //Upadate the qury is needed here
-                  // limit = request.Limit.HasValue && request.Limit != 0 ? request.Limit.Value : limit;
-                  // offset = request.Offset.HasValue && request.Offset != 0 ? request.Offset.Value : offset;
-                  // fields = request.Fields != null ? string.Join(",", request.Fields) : fields;
-                  // mongoDoc.Query = mongoDoc.Query.Replace("*", fields);
-                 
-                  var result = await _dremioService.ExecuteQuery(mongoDoc.Query, offset , limit);
-                  
-                  return result;
-            }
-      }
+            return query;
+        }
+    }
 }
