@@ -1,0 +1,12 @@
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\bin\Debug\net9.0\DiscoData2API_Library.deps.json
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\bin\Debug\net9.0\DiscoData2API_Library.dll
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\bin\Debug\net9.0\DiscoData2API_Library.pdb
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.AssemblyInfoInputs.cache
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.AssemblyInfo.cs
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.csproj.CoreCompileInputs.cache
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.sourcelink.json
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.dll
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\refint\DiscoData2API_Library.dll
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\DiscoData2API_Library.pdb
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net9.0\ref\DiscoData2API_Library.dll

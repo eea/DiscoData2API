@@ -3,16 +3,24 @@
   "WorkspaceRootPath": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\class\\queryrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:class\\queryrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\services\\mongoservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:services\\mongoservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\services\\dremioservicebeta.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:services\\dremioservicebeta.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\services\\dremioservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:services\\dremioservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\class\\connectionsettingsdremio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:class\\connectionsettingsdremio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|c:\\users\\dubos\\_projects\\discodata2api\\back\\public\\controllers\\querycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{ACB46AC1-53CF-4757-9880-D21C11D489D4}|DiscoData2API.csproj|solutionrelative:controllers\\querycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,44 +30,71 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "QueryRequest.cs",
-              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Class\\QueryRequest.cs",
-              "RelativeDocumentMoniker": "Class\\QueryRequest.cs",
-              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Class\\QueryRequest.cs*",
-              "RelativeToolTip": "Class\\QueryRequest.cs*",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAjAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "ConnectionSettingsDremio.cs",
+              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Class\\ConnectionSettingsDremio.cs",
+              "RelativeDocumentMoniker": "Class\\ConnectionSettingsDremio.cs",
+              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Class\\ConnectionSettingsDremio.cs",
+              "RelativeToolTip": "Class\\ConnectionSettingsDremio.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-15T16:40:29.112Z",
+              "WhenOpened": "2024-11-19T13:08:58.688Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "QueryController.cs",
-              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Controllers\\QueryController.cs",
-              "RelativeDocumentMoniker": "Controllers\\QueryController.cs",
-              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Controllers\\QueryController.cs",
-              "RelativeToolTip": "Controllers\\QueryController.cs",
-              "ViewState": "AgIAABsAAAAAAAAAAAAYwDsAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-15T16:20:16.221Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-15T16:09:01.064Z",
+              "WhenOpened": "2024-11-19T13:01:00.624Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MongoService.cs",
+              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\MongoService.cs",
+              "RelativeDocumentMoniker": "Services\\MongoService.cs",
+              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\MongoService.cs",
+              "RelativeToolTip": "Services\\MongoService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-19T12:56:15.504Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "DremioServiceBeta.cs",
+              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\DremioServiceBeta.cs",
+              "RelativeDocumentMoniker": "Services\\DremioServiceBeta.cs",
+              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\DremioServiceBeta.cs",
+              "RelativeToolTip": "Services\\DremioServiceBeta.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGcAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-19T12:53:16.939Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DremioService.cs",
+              "DocumentMoniker": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\DremioService.cs",
+              "RelativeDocumentMoniker": "Services\\DremioService.cs",
+              "ToolTip": "C:\\Users\\dubos\\_projects\\DiscoData2API\\back\\public\\Services\\DremioService.cs",
+              "RelativeToolTip": "Services\\DremioService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-19T12:52:54.685Z",
               "EditorCaption": ""
             }
           ]

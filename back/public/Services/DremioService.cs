@@ -5,9 +5,8 @@ using Grpc.Net.Client;
 using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
-using DiscoData2API.Class;
 using Microsoft.Extensions.Options;
-using DiscoData2API.Misc;
+using DiscoData2API_Library;
 
 namespace DiscoData2API.Services
 {
@@ -20,7 +19,7 @@ namespace DiscoData2API.Services
         private string? _dremioServerAuth;
         private FlightClient _flightClient;
 
-        public DremioService(IOptions<DremioSettings> dremioSettings, ILogger<DremioService> logger)
+        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
             _logger = logger;
             _username = dremioSettings.Value.Username;

@@ -1,5 +1,6 @@
 using DiscoData2API.Misc;
 using DiscoData2API.Models;
+using DiscoData2API_Library;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -9,7 +10,7 @@ namespace DiscoData2API.Services
       {
             private readonly ILogger<MongoService> _logger;
             private readonly IMongoCollection<MongoDocument> _collection;
-            public MongoService(IOptions<MongoSettings> mongoSettings, ILogger<MongoService> logger)
+            public MongoService(IOptions<ConnectionSettingsMongo> mongoSettings, ILogger<MongoService> logger)
             {
                   _logger = logger;
                   var mongoClient = new MongoClient(mongoSettings.Value.ConnectionString);

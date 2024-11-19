@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DiscoData2API.Class;
 using DiscoData2API.Misc;
+using DiscoData2API_Library;
 using Microsoft.Extensions.Options;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ namespace DiscoData2API.Services
         private const int timeoutMs = 10000; // Timeout after 10 seconds
         private int elapsedTime = 0;
 
-        public DremioServiceBeta(IOptions<DremioSettings> dremioSettings, ILogger<DremioServiceBeta> logger)
+        public DremioServiceBeta(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioServiceBeta> logger)
         {
             _logger = logger;
             _username = dremioSettings.Value.Username;
