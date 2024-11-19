@@ -63,7 +63,7 @@ namespace DiscoData2API.Services
                         // Convert RecordBatch to a serializable format
                         jsonResult = ConvertRecordBatchToJson(current);
 
-                        // Write the JSON result to a file for debugging
+                        // FOR DEBUGGING: Write the JSON result to a file
                         //await File.WriteAllTextAsync("output.json", jsonResult);
                     }
                 }
@@ -147,6 +147,12 @@ namespace DiscoData2API.Services
                             break;
                         case StringArray stringArray:
                             rowData[columnName] = stringArray.GetString(i);
+                            break;
+                        case Date64Array date64Array:
+                            rowData[columnName] = date64Array.Values[i];
+                            break;
+                        case Date32Array date32Array:
+                            rowData[columnName] = date32Array.Values[i];
                             break;
                         // Add cases for other array types as needed
                         default:

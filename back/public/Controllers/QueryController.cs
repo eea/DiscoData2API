@@ -21,16 +21,38 @@ namespace DiscoData2API.Controllers
             _dremioService = dremioService;
         }
 
+        /// <summary>
+        /// Get catalog of queries from MongoDB
+        /// </summary>
+        /// <returns>Return a list of MongoDocument class</returns>
+        /// 
         [HttpGet("GetCatalog")]
         public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
         {
             return await _mongoService.GetAllAsync();
         }
 
+        /// <summary>
+        /// Execute a query and return JSON result
+        /// </summary>
+        /// <param name="id">The mongoDb query ID</param>
+        /// <param name="request">The JSON body of the httpRequest</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Sample request:
+        /// 
+        ///     POST /api/query/672b84ef75e2d0b792658f24
+        ///     {
+        ///     "fields": ["column1", "column2"],
+        ///     "limit": 100
+        ///     }
+        ///         
+        /// </remarks>
+        /// <response code="201">Returns the newly created item</response>
+        /// <response code="400">If the item is null</response>
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
-            id = "672b84ef75e2d0b792658f24";   //for debugging purposes
             MongoDocument mongoDoc = await _mongoService.GetById(id);
 
             if (mongoDoc == null)
@@ -38,13 +60,17 @@ namespace DiscoData2API.Controllers
                 _logger.LogError($"Query with id {id} not found");
                 return NotFound();
             }
-
-            mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+            else
+            {  
+                mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+            }
 
             var result = await _dremioService.ExecuteQuery(mongoDoc.Query);
 
             return result;
         }
+
+        #region helper
 
         private string UpdateQueryString(string query, string[]? fields, int? limit)
         {
@@ -65,5 +91,7 @@ namespace DiscoData2API.Controllers
 
             return query;
         }
+
+        #endregion
     }
 }

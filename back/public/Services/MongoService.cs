@@ -17,6 +17,10 @@ namespace DiscoData2API.Services
                   _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.dremio_queries.ToString());
             }
 
+            /// <summary>
+            /// Get all documents from the collection
+            /// </summary>
+            /// <returns></returns>
             public async Task<List<MongoDocument>> GetAllAsync()
             {
                   try
@@ -30,6 +34,11 @@ namespace DiscoData2API.Services
                   }
             }
 
+            /// <summary>
+            /// Get document by id
+            /// </summary>
+            /// <param name="id"></param>
+            /// <returns></returns>
             public async Task<MongoDocument> GetById(string id)
             {
                   try

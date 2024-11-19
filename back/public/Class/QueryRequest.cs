@@ -1,11 +1,15 @@
+using System.ComponentModel;
+
 namespace DiscoData2API.Class
 {
       public class QueryRequest
       {
-        /// <example>1234</example>
-        public string[]? Fields { get; set; }
+            [DefaultValue(null)]
+            public string[]? Fields { get; set; }
+             [DefaultValue(null)]
             public string[]? Filters { get; set; }
+            [DefaultValue(150)]
             public int? Limit { get; set; }
-            public int? Offset { get; set; }
+
       }
 }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using DiscoData2API.Misc;
 using DiscoData2API.Services;
 using Microsoft.OpenApi.Models;
@@ -22,14 +23,17 @@ builder.Services.AddSingleton<DremioServiceBeta>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwaggerGen(options =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Query API",
+        Title = "DiscoData API (Public)",
         Version = "v1",
         Description = "API for executing queries.",
     });
+
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 
 var app = builder.Build();
@@ -38,13 +42,16 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    //app.UseSwaggerUI();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-    });
 }
+
+app.UseSwagger();
+//app.UseSwaggerUI();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+
+
+});
 
 app.UseHttpsRedirection();
 
