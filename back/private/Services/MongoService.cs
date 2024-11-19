@@ -1,15 +1,16 @@
-using DiscoData2API.Misc;
-using DiscoData2API.Models;
+using DiscoData2API_Priv.Misc;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using DiscoData2API_Library.Model;
+using DiscoData2API_Library.Class;
 
-namespace DiscoData2API.Services
+namespace DiscoData2API_Priv.Services
 {
       public class MongoService
       {
             private readonly ILogger<MongoService> _logger;
             private readonly IMongoCollection<MongoDocument> _collection;
-            public MongoService(IOptions<MongoSettings> mongoSettings, ILogger<MongoService> logger)
+            public MongoService(IOptions<ConnectionSettingsMongo> mongoSettings, ILogger<MongoService> logger)
             {
                   _logger = logger;
                   var mongoClient = new MongoClient(mongoSettings.Value.ConnectionString);

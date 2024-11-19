@@ -1,6 +1,6 @@
 using System.Reflection;
-// using DiscoData2AP.Misc;
-// using DiscoData2API.Services;
+using DiscoData2API_Priv.Services;
+using DiscoData2API_Library.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -14,22 +14,19 @@ Log.Logger = new LoggerConfiguration()
 
 // Add Serilog to the logging system
 builder.Host.UseSerilog();
-
-// builder.Services.Configure<MongoSettings>(builder.Configuration.GetSection("MongoSettings"));
-// builder.Services.Configure<DremioSettings>(builder.Configuration.GetSection("DremioSettings"));
-// builder.Services.AddSingleton<DremioService>();
-// builder.Services.AddSingleton<MongoService>();
-// builder.Services.AddSingleton<DremioServiceBeta>();
+builder.Services.Configure<ConnectionSettingsMongo>(builder.Configuration.GetSection("MongoSettings"));
+builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
+builder.Services.AddSingleton<DremioService>();
+builder.Services.AddSingleton<MongoService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "DiscoData API (Public)",
+        Title = "DiscoData API (Private)",
         Version = "v1",
-        Description = "API for executing queries.",
+        Description = "API for executing queries. ",
     });
 
     //var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";

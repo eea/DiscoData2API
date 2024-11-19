@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DiscoData2API.Misc;
-using DiscoData2API_Library;
+using DiscoData2API_Library.Class;
 using Microsoft.Extensions.Options;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////

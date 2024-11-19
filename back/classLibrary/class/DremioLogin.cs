@@ -1,4 +1,5 @@
-namespace DiscoData2API_Library;
+namespace DiscoData2API_Library.Class;
+
 using System.Text.Json.Serialization;
 
 public class DremioLogin

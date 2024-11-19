@@ -1,4 +1,4 @@
-namespace DiscoData2API_Library;
+namespace DiscoData2API_Library.Class;
 public class ConnectionSettingsMongo
 {
     public string ConnectionString { get; set; } = null!;

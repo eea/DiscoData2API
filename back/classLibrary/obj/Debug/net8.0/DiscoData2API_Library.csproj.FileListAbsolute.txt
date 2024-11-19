@@ -10,3 +10,4 @@ C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net8.0\DiscoD
 C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net8.0\refint\DiscoData2API_Library.dll
 C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net8.0\DiscoData2API_Library.pdb
 C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net8.0\ref\DiscoData2API_Library.dll
+C:\Users\dubos\_projects\DiscoData2API\back\classLibrary\obj\Debug\net8.0\DiscoData2API_Library.csproj.AssemblyReference.cache

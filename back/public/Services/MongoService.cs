@@ -1,6 +1,6 @@
 using DiscoData2API.Misc;
-using DiscoData2API.Models;
-using DiscoData2API_Library;
+using DiscoData2API_Library.Class;
+using DiscoData2API_Library.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -21,7 +21,7 @@ namespace DiscoData2API.Services
             /// <summary>
             /// Get all documents from the collection
             /// </summary>
-            /// <returns></returns>
+            /// <returns></returns
             public async Task<List<MongoDocument>> GetAllAsync()
             {
                   try
