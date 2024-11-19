@@ -11,7 +11,7 @@ WORKDIR /src
 COPY ["../classLibrary/DiscoData2API_Library.csproj", "classLibrary/"]
 
 # Copy the project file (relative to the Dockerfile's location in "public")
-COPY ["public/DiscoData2API_Priv.csproj", "private/"]
+COPY ["private/DiscoData2API_Priv.csproj", "private/"]
 
 # Restore dependencies
 RUN dotnet restore "private/DiscoData2API_Priv.csproj"
