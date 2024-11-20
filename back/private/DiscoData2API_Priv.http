@@ -1,0 +1,6 @@
+@DiscoData2API_Priv_HostAddress = http://localhost:5243
+
+GET {{DiscoData2API_Priv_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

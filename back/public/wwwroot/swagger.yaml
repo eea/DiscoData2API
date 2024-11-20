@@ -1,0 +1,38 @@
+paths:
+  /example:
+    post:
+      summary: Create an example resource
+      description: This endpoint creates a new example resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the example.
+                age:
+                  type: integer
+                  description: The age of the example.
+                isActive:
+                  type: boolean
+                  description: Whether the example is active.
+              required:
+                - name
+                - age
+      responses:
+        '201':
+          description: Resource created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The unique identifier of the created resource.
+                  message:
+                    type: string
+                    description: Confirmation message.

@@ -1,0 +1,8 @@
+// namespace DiscoData2API.Class
+// {
+//     public class ConnectionSettingsMongo
+//     {
+//         public string ConnectionString { get; set; } = null!;
+//         public string DatabaseName { get; set; } = null!;
+//     }
+// }
