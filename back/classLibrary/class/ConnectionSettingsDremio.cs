@@ -6,5 +6,6 @@ public class ConnectionSettingsDremio
     public string? Password { get; set; }
     public string? DremioServer { get; set; }
     public string? DremioServerAuth { get; set; }
+    public int Limit { get; set; }
 }
 

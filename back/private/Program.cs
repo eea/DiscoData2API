@@ -29,8 +29,8 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API for executing queries. ",
     });
 
-    //var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    //options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 
 var app = builder.Build();

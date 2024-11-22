@@ -18,6 +18,7 @@ namespace DiscoData2API.Services
         private readonly string? _dremioServer;
         private string? _dremioServerAuth;
         private FlightClient _flightClient;
+        public readonly int _limit = 1000;
 
         public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
@@ -26,6 +27,7 @@ namespace DiscoData2API.Services
             _password = dremioSettings.Value.Password;
             _dremioServer = dremioSettings.Value.DremioServer;
             _dremioServerAuth = dremioSettings.Value.DremioServerAuth;
+            _limit = dremioSettings.Value.Limit;
             _flightClient = InitializeFlightClient();
         }
 

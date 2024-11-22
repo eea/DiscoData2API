@@ -4,7 +4,7 @@ namespace DiscoData2API.Misc
     {
         public enum Collection
         {
-            dremio_queries,
+            discoData_queries,
         }
 
         public enum JobStatus
