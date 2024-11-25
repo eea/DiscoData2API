@@ -1,6 +1,6 @@
 using System.Reflection;
 using DiscoData2API.Services;
-using DiscoData2API_Library.Class;
+using DiscoData2API.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
