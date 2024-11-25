@@ -19,6 +19,8 @@ RUN dotnet restore "public/DiscoData2API.csproj"
 # Copy the rest of the class library source files
 COPY classLibrary/ ./classLibrary/
 
+COPY config/appsettings_dev_bm.json ./appsettings.json
+
 # Copy the rest of the application
 COPY . .
 
