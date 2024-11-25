@@ -6,6 +6,7 @@ EXPOSE 5205
 
 # Use the official .NET Core SDK as the build image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG ENVIRONMENT
 WORKDIR /src
 
 # Copy the class library project file
@@ -19,6 +20,7 @@ RUN dotnet restore "public/DiscoData2API.csproj"
 
 # Copy the rest of the class library source files
 COPY classLibrary/ ./classLibrary/
+# copy appropriate environment configuration
 COPY ./Configs/appsettings_$ENVIRONMENT.json  ./appsettings.json
 
 
