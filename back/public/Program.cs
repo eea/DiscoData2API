@@ -1,6 +1,7 @@
 using System.Reflection;
 using DiscoData2API.Services;
 using DiscoData2API_Library.Class;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -21,6 +22,7 @@ builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -36,7 +38,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -47,8 +48,6 @@ app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-
-
 });
 
 app.UseHttpsRedirection();

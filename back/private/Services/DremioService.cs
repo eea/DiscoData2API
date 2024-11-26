@@ -63,9 +63,6 @@ namespace DiscoData2API_Priv.Services
                         var arrays = stream.ResponseStream.Current.Arrays.ToList();
                         // Convert RecordBatch to a serializable format
                         jsonResult = ConvertRecordBatchToJson(current);
-
-                        // FOR DEBUGGING: Write the JSON result to a file
-                        //await File.WriteAllTextAsync("output.json", jsonResult);
                     }
                 }
 

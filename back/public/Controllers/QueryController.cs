@@ -1,6 +1,7 @@
 using DiscoData2API.Services;
 using DiscoData2API_Library.Class;
 using DiscoData2API_Library.Model;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
@@ -9,17 +10,35 @@ namespace DiscoData2API.Controllers
     [Route("api/[controller]")]
     public class QueryController : ControllerBase
     {
+
         private readonly ILogger<QueryController> _logger;
         private readonly MongoService _mongoService;
         private readonly DremioService _dremioService;
-        private int _defaultLimit = 150000;
+        private readonly int _defaultLimit;
+        private readonly int _timeout;
 
         public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
         {
             _logger = logger;
             _mongoService = mongoService;
             _dremioService = dremioService;
-            _defaultLimit = dremioService._limit; //the limit comes from the appsetting.json file
+            _defaultLimit = dremioService._limit;
+            _timeout = dremioService._timeout;
+        }
+
+        [HttpGet("testtimeout1")]
+        [RequestTimeout("MyPolicy")]
+        public async Task<IActionResult> TestTimeout()
+        {
+            try
+            {
+                await Task.Delay(10000); // Simulate a long-running operation (30 seconds)
+                return Ok("Completed");
+            }
+            catch (TaskCanceledException)
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -54,21 +73,35 @@ namespace DiscoData2API.Controllers
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
-            MongoDocument mongoDoc = await _mongoService.GetById(id);
-
-            if (mongoDoc == null)
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
+            try
             {
-                _logger.LogError($"Query with id {id} not found");
-                return NotFound();
-            }
-            else
-            {  
-                mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
-            }
+                MongoDocument mongoDoc = await _mongoService.GetById(id);
 
-            var result = await _dremioService.ExecuteQuery(mongoDoc.Query);
+                if (mongoDoc == null)
+                {
+                    _logger.LogError($"Query with id {id} not found");
+                    return NotFound();
+                }
+                else
+                {
+                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+                }
 
-            return result;
+                var result = await _dremioService.ExecuteQuery(mongoDoc.Query , cts.Token);
+
+                return result;
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogError("Task was canceled due to timeout.");
+                return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return null;
+            }
         }
 
         #region helper
@@ -76,7 +109,7 @@ namespace DiscoData2API.Controllers
         private string UpdateQueryString(string query, string[]? fields, int? limit)
         {
             //Update fields returned by query
-            fields = fields != null ? fields : new string[] { "*" };
+            fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
             //Update limit of query
