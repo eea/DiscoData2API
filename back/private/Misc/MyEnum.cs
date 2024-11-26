@@ -4,7 +4,7 @@ namespace DiscoData2API_Priv.Misc
     {
         public enum Collection
         {
-            discoData_queries,
+            discodata_queries,
         }
 
         public enum JobStatus

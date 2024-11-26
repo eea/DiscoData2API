@@ -7,5 +7,6 @@ public class ConnectionSettingsDremio
     public string? DremioServer { get; set; }
     public string? DremioServerAuth { get; set; }
     public int Limit { get; set; }
+    public int Timeout { get; set; }
 }
 

@@ -120,7 +120,7 @@ namespace DiscoData2API.Controllers
         private string UpdateQueryString(string query, string[]? fields, int? limit)
         {
             //Update fields returned by query
-            fields = fields != null ? fields : new string[] { "*" };
+            fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
             //Update limit of query

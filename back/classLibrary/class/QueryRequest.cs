@@ -4,9 +4,9 @@ using System.ComponentModel;
 
 public class QueryRequest
 {
-    [DefaultValue(null)]
+    [DefaultValue(typeof(string[]), "")]
     public string[]? Fields { get; set; }
-    [DefaultValue(null)]
+    [DefaultValue(typeof(string[]), "")]
     public string[]? Filters { get; set; }
     [DefaultValue(150)]
     public int? Limit { get; set; }
