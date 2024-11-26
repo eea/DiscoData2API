@@ -6,7 +6,7 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API_Library.Class;
+using DiscoData2API.Class;
 
 namespace DiscoData2API.Services
 {
@@ -78,7 +78,7 @@ namespace DiscoData2API.Services
             }
         }
 
-        public async Task<DremioLogin> ApiLogin()
+        public async Task<DremioLogin?> ApiLogin()
         {
             HttpClient Client = new HttpClient();
             try

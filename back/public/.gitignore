@@ -26,6 +26,7 @@ out/
 *.code-workspace
 *.sln.cache
 .vscode/settings.json
+.vs/
 
 # Configuration Files
 appsettings*.json     # Local or development settings files with sensitive info
@@ -71,6 +72,7 @@ project.fragment.lock.json
 *.swp                   # Swap files (e.g., for Vim)
 *.bak                   # Backup files
 *.orig                  # Backup files for merged conflicts
+*.vsidx
 
 # Resharper
 .ReSharper/

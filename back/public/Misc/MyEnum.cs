@@ -4,7 +4,11 @@ namespace DiscoData2API.Misc
     {
         public enum Collection
         {
+<<<<<<< HEAD
+            discodata_queries,
+=======
             discoData_queries,
+>>>>>>> main
         }
 
         public enum JobStatus
