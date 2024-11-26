@@ -24,7 +24,7 @@ jobs:
       
     - uses: actions/checkout@v4
     - name: Push
-      working-directory: back/public/
+      working-directory: back/
       run: docker push txalaparta/disco-data-api_dev:latest
 
     - uses: actions/checkout@v4
