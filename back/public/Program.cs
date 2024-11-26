@@ -4,6 +4,7 @@ using DiscoData2API.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
+//needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog for file logging
