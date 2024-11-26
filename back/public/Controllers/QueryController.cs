@@ -1,6 +1,6 @@
 using DiscoData2API.Services;
 using DiscoData2API.Class;
-using DiscoData2API.Models;
+using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
@@ -12,14 +12,13 @@ namespace DiscoData2API.Controllers
         private readonly ILogger<QueryController> _logger;
         private readonly MongoService _mongoService;
         private readonly DremioService _dremioService;
-        private int _defaultLimit = 150000;
+        private int defaultLimit = 150000;
 
         public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
         {
             _logger = logger;
             _mongoService = mongoService;
             _dremioService = dremioService;
-            _defaultLimit = dremioService._limit; //the limit comes from the appsetting.json file
         }
 
         /// <summary>
@@ -80,7 +79,7 @@ namespace DiscoData2API.Controllers
             query = query.Replace("*", string.Join(",", fields));
 
             //Update limit of query
-            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
+            limit = limit.HasValue && limit != 0 ? limit.Value : defaultLimit;
             if (query.Contains("LIMIT"))
             {
                 query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", $"LIMIT {limit}");

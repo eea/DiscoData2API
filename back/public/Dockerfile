@@ -10,7 +10,7 @@ ARG ENVIRONMENT
 WORKDIR /src
 
 # Copy the class library project file
-COPY ["../classLibrary/DiscoData2API_Library.csproj", "classLibrary/"]
+#COPY ["../classLibrary/DiscoData2API.csproj", "classLibrary/"]
 
 # Copy the project file (relative to the Dockerfile's location in "public")
 COPY ["public/DiscoData2API.csproj", "public/"]
@@ -19,7 +19,7 @@ COPY ["public/DiscoData2API.csproj", "public/"]
 RUN dotnet restore "public/DiscoData2API.csproj"
 
 # Copy the rest of the class library source files
-COPY classLibrary/ ./classLibrary/
+#COPY classLibrary/ ./classLibrary/
 # copy appropriate environment configuration
 COPY ./Configs/appsettings_$ENVIRONMENT.json  ./appsettings.json
 

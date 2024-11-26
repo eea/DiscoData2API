@@ -37,7 +37,7 @@ namespace DiscoData2API.Services
         {
             // Login to Dremio and get the token    
             DremioLogin? login = await ApiLogin();
-            if (login == null) return "";
+            if (login==null) return string.Empty;
             if (string.IsNullOrEmpty(login.Token))
             {
                 _logger.LogError("Dremio token is null for login user");
