@@ -1,6 +1,6 @@
 using DiscoData2API.Misc;
-using DiscoData2API_Library.Class;
-using DiscoData2API_Library.Model;
+using DiscoData2API.Class;
+using DiscoData2API.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -15,7 +15,7 @@ namespace DiscoData2API.Services
                   _logger = logger;
                   var mongoClient = new MongoClient(mongoSettings.Value.ConnectionString);
                   var database = mongoClient.GetDatabase(mongoSettings.Value.DatabaseName);
-                  _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.dremio_queries.ToString());
+                  _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.discodata_queries.ToString());
             }
 
             /// <summary>

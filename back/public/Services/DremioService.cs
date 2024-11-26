@@ -130,9 +130,9 @@ namespace DiscoData2API.Services
                 var rowData = new Dictionary<string, object>();
 
                 // For each row, iterate over columns
-                foreach (var column in recordBatch.Schema.Fields.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
+                foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                 {
-                    string columnName = column.field.Value.Name;
+                    string columnName = column.field.Name;
 
                     switch (column.array)
                     {

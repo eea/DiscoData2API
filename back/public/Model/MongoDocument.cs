@@ -15,7 +15,7 @@ public class MongoDocument : MongoBaseDocument
     public string Name { get; set; } = null!;
 
     [BsonElement("version")]
-    public int Version { get; set; }
+    public string? Version { get; set; }
 
     [BsonElement("date")]
     public DateTime Date { get; set; }
