@@ -29,5 +29,5 @@ jobs:
 
     - uses: actions/checkout@v4
     - name: Remove the Docker image to free space
-      working-directory: back
+      working-directory: back/
       run: docker image rmi -f txalaparta/disco-data-api_dev_bm:latest
