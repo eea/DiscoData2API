@@ -27,15 +27,3 @@ It creates an image for each environment (Check Configs folder)
 ```bash
   docker run -it -p 5243:5243 --name disco-data-api-private-container txalaparta/disco-data-api-private_(ENVIRONMENT)
 ```
-
-### PRIVATE API
-Open terminal at back forder level
-
-
-```bash
-  docker build -f private/Dockerfile -t disco-data-api-private .
-```
-```bash
-  docker run -it -p 5243:5243 --name disco-data-api-private-container disco-data-api-private
-```
-
