@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DiscoData2API.Misc;
-using DiscoData2API_Library.Class;
+using DiscoData2API.Class;
 using Microsoft.Extensions.Options;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,8 @@ namespace DiscoData2API.Services
         public async Task<string> ExecuteQuery(string query, int offset = 0, int limit = 200)
         {
             // Login to Dremio and get the token    
-            DremioLogin login = await ApiLogin();
+            DremioLogin? login = await ApiLogin();
+            if (login==null) return string.Empty;
             if (string.IsNullOrEmpty(login.Token))
             {
                 _logger.LogError("Dremio token is null for login user");
@@ -101,7 +102,7 @@ namespace DiscoData2API.Services
         }
 
 
-        public async Task<DremioLogin> ApiLogin()
+        public async Task<DremioLogin?> ApiLogin()
         {
             try
             {

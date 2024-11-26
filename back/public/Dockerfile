@@ -8,7 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the class library project file
-COPY ["../classLibrary/DiscoData2API_Library.csproj", "classLibrary/"]
+COPY ["../classLibrary/DiscoData2API.csproj", "classLibrary/"]
 
 # Copy the project file (relative to the Dockerfile's location in "public")
 COPY ["public/DiscoData2API.csproj", "public/"]

@@ -1,6 +1,6 @@
 using DiscoData2API.Services;
-using DiscoData2API_Library.Class;
-using DiscoData2API_Library.Model;
+using DiscoData2API.Class;
+using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
@@ -53,7 +53,7 @@ namespace DiscoData2API.Controllers
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
-            MongoDocument mongoDoc = await _mongoService.GetById(id);
+            MongoDocument? mongoDoc = await _mongoService.GetById(id);
 
             if (mongoDoc == null)
             {

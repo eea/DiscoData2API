@@ -6,7 +6,7 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API_Library.Class;
+using DiscoData2API.Class;
 
 namespace DiscoData2API.Services
 {
@@ -76,7 +76,7 @@ namespace DiscoData2API.Services
             }
         }
 
-        public async Task<DremioLogin> ApiLogin()
+        public async Task<DremioLogin?> ApiLogin()
         {
             HttpClient Client = new HttpClient();
             try
@@ -142,7 +142,9 @@ namespace DiscoData2API.Services
                             rowData[columnName] = doubleArray.Values[i];
                             break;
                         case Decimal128Array decimal128Array:
+#pragma warning disable CS8601 // Posible asignación de referencia nula
                             rowData[columnName] = decimal128Array.GetValue(i);
+#pragma warning restore CS8601 // Posible asignación de referencia nula
                             break;
                         case StringArray stringArray:
                             rowData[columnName] = stringArray.GetString(i);
