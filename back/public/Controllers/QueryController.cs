@@ -1,6 +1,6 @@
 using DiscoData2API.Services;
 using DiscoData2API.Class;
-using DiscoData2API.Models;
+using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers

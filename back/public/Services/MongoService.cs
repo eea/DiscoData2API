@@ -1,6 +1,6 @@
 using DiscoData2API.Misc;
 using DiscoData2API.Class;
-using DiscoData2API.Models;
+using DiscoData2API.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 

@@ -1,7 +1,4 @@
 ﻿[*.cs]
 
-# CS1591: Falta el comentario XML para el tipo o miembro visible públicamente
-dotnet_diagnostic.CS1591.severity = none
-
-# CS8601: Posible asignación de referencia nula
-dotnet_diagnostic.CS8601.severity = none
+# Default severity for analyzer diagnostics with category 'Naming'
+dotnet_analyzer_diagnostic.category-Naming.severity = none
