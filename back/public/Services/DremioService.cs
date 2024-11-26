@@ -19,6 +19,8 @@ namespace DiscoData2API.Services
         private string? _dremioServerAuth;
         private FlightClient _flightClient;
 
+        //add comment
+
         public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
             _logger = logger;
