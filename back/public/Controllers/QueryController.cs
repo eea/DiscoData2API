@@ -1,7 +1,6 @@
 using DiscoData2API.Services;
-using DiscoData2API_Library.Class;
-using DiscoData2API_Library.Model;
-using Microsoft.AspNetCore.Http.Timeouts;
+using DiscoData2API.Class;
+using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
@@ -24,21 +23,6 @@ namespace DiscoData2API.Controllers
             _dremioService = dremioService;
             _defaultLimit = dremioService._limit;
             _timeout = dremioService._timeout;
-        }
-
-        [HttpGet("testtimeout1")]
-        [RequestTimeout("MyPolicy")]
-        public async Task<IActionResult> TestTimeout()
-        {
-            try
-            {
-                await Task.Delay(10000); // Simulate a long-running operation (30 seconds)
-                return Ok("Completed");
-            }
-            catch (TaskCanceledException)
-            {
-                return null;
-            }
         }
 
         /// <summary>

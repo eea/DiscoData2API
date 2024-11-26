@@ -1,0 +1,33 @@
+name: Public API Production
+# only trigger on pull request closed events
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - back/public/**    
+jobs:
+  build:
+    runs-on: ubuntu-latest 
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Build the Docker image
+      working-directory:  back/
+      run: docker build -f public/Dockerfile  --build-arg ENVIRONMENT=prod  -t txalaparta/disco-data-api_prod:latest .
+
+    - uses: docker/login-action@v3
+      name: Login to Docker Hub      
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      
+    - uses: actions/checkout@v4
+    - name: Push
+      working-directory: back/public/
+      run: docker push txalaparta/disco-data-api_prod:latest
+
+    - uses: actions/checkout@v4
+    - name: Remove the Docker image to free space
+      working-directory: back/
+      run: docker image rmi -f txalaparta/disco-data-api_prod:latest

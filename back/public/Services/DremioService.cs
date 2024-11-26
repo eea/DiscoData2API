@@ -6,7 +6,7 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API_Library.Class;
+using DiscoData2API.Class;
 
 namespace DiscoData2API.Services
 {
@@ -81,7 +81,7 @@ namespace DiscoData2API.Services
             }
         }
 
-        public async Task<DremioLogin> ApiLogin()
+        public async Task<DremioLogin?> ApiLogin()
         {
             try
             {
@@ -130,9 +130,9 @@ namespace DiscoData2API.Services
                 var rowData = new Dictionary<string, object>();
 
                 // For each row, iterate over columns
-                foreach (var column in recordBatch.Schema.Fields.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
+                foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                 {
-                    string columnName = column.field.Value.Name;
+                    string columnName = column.field.Name;
 
                     switch (column.array)
                     {
@@ -146,7 +146,9 @@ namespace DiscoData2API.Services
                             rowData[columnName] = doubleArray.Values[i];
                             break;
                         case Decimal128Array decimal128Array:
+#pragma warning disable CS8601 // Posible asignaci�n de referencia nula
                             rowData[columnName] = decimal128Array.GetValue(i);
+#pragma warning restore CS8601 // Posible asignaci�n de referencia nula
                             break;
                         case StringArray stringArray:
                             rowData[columnName] = stringArray.GetString(i);
