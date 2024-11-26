@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DiscoData2API_Library")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ebf96bc5e3dff8debf6165afe3350830e28fb02")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+053bff085f82cdc63b9b9c4b7ac66f822205e092")]
 [assembly: System.Reflection.AssemblyProductAttribute("DiscoData2API_Library")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DiscoData2API_Library")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -15,7 +15,11 @@ namespace DiscoData2API.Services
                   _logger = logger;
                   var mongoClient = new MongoClient(mongoSettings.Value.ConnectionString);
                   var database = mongoClient.GetDatabase(mongoSettings.Value.DatabaseName);
+<<<<<<< HEAD
                   _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.discodata_queries.ToString());
+=======
+                  _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.discoData_queries.ToString());
+>>>>>>> main
             }
 
             /// <summary>
