@@ -48,7 +48,7 @@ namespace DiscoData2API.Services
                 var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
 
                 // Fetch FlightInfo for the query
-                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts); ;
+                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
                 
                 var allResults = new List<string>();
                 // Iterate over the returned tickets from FlightInfo

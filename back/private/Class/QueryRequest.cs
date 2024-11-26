@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace DiscoData2API.Class
+namespace DiscoData2API_Priv.Class
 {
     public class QueryRequest
     {

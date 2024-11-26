@@ -1,8 +1,8 @@
 using DiscoData2API_Priv.Misc;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using DiscoData2API_Library.Model;
-using DiscoData2API_Library.Class;
+using DiscoData2API_Priv.Model;
+using DiscoData2API_Priv.Class;
 
 namespace DiscoData2API_Priv.Services
 {

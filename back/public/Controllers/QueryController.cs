@@ -9,7 +9,6 @@ namespace DiscoData2API.Controllers
     [Route("api/[controller]")]
     public class QueryController : ControllerBase
     {
-
         private readonly ILogger<QueryController> _logger;
         private readonly MongoService _mongoService;
         private readonly DremioService _dremioService;
@@ -60,7 +59,7 @@ namespace DiscoData2API.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                MongoDocument mongoDoc = await _mongoService.GetById(id);
+                MongoDocument? mongoDoc = await _mongoService.GetById(id);
 
                 if (mongoDoc == null)
                 {
@@ -72,19 +71,19 @@ namespace DiscoData2API.Controllers
                     mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
                 }
 
-                var result = await _dremioService.ExecuteQuery(mongoDoc.Query , cts.Token);
+                var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
 
                 return result;
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException)
             {
                 _logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return null;
+                return ex.Message;
             }
         }
 
