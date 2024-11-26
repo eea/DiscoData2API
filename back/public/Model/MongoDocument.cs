@@ -1,41 +1,41 @@
-// using DiscoData2API.Model;
-// using MongoDB.Bson;
-// using MongoDB.Bson.Serialization.Attributes;
+using DiscoData2API.Model;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
-// namespace DiscoData2API.Models
-// {
-//     [BsonIgnoreExtraElements]
-//     public class MongoDocument : MongoBaseDocument
-//     {
-//         [BsonId]
-//         [BsonRepresentation(BsonType.ObjectId)]
-//         public string _id { get; set; } = null!;
+namespace DiscoData2API.Models
+{
+    [BsonIgnoreExtraElements]
+    public class MongoDocument : MongoBaseDocument
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string _id { get; set; } = null!;
 
-//         [BsonElement("name")]
-//         public string Name { get; set; } = null!;
-        
-//         [BsonElement("version")]
-//         public int Version { get; set; }
+        [BsonElement("name")]
+        public string Name { get; set; } = null!;
 
-//         [BsonElement("date")]
-//         public DateTime Date { get; set; }
+        [BsonElement("version")]
+        public string? Version { get; set; }
 
-//         [BsonElement("query")]
-//         public string Query { get; set; }= null!;
+        [BsonElement("date")]
+        public DateTime Date { get; set; }
 
-//         [BsonElement("fields")]
-//         public List<Field> Fileds { get; set; } = null!;
-//     }
+        [BsonElement("query")]
+        public string Query { get; set; } = null!;
 
-//     public class Field
-//     {
-//         [BsonElement("name")]
-//         public string Name { get; set; } = null!;
+        [BsonElement("fields")]
+        public List<Field> Fileds { get; set; } = null!;
+    }
 
-//         [BsonElement("type")]
-//         public string Type { get; set; } = null!;
+    public class Field
+    {
+        [BsonElement("name")]
+        public string Name { get; set; } = null!;
 
-//         [BsonElement("description")]
-//         public string Description { get; set; } = null!;
-//     }
-// }
+        [BsonElement("type")]
+        public string Type { get; set; } = null!;
+
+        [BsonElement("description")]
+        public string Description { get; set; } = null!;
+    }
+}

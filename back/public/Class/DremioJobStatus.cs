@@ -1,10 +1,10 @@
-// using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
-// namespace DiscoData2API.Class
-// {
-//       public class DremioJobStatus
-//       {
-//             [JsonPropertyName("jobState")]
-//             public string? JobState { get; set; }
-//       }
-// }
+namespace DiscoData2API.Class
+{
+    public class DremioJobStatus
+    {
+        [JsonPropertyName("jobState")]
+        public string? JobState { get; set; }
+    }
+}
