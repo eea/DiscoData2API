@@ -18,7 +18,7 @@ namespace DiscoData2API_Priv.Services
         private readonly string? _dremioServer;
         private string? _dremioServerAuth;
         private FlightClient _flightClient;
-        public readonly int _limit = 1000;
+        public readonly int _limit;
         public readonly int _timeout;
         private readonly HttpClient _httpClient;
 
@@ -78,38 +78,6 @@ namespace DiscoData2API_Priv.Services
             {
                 _logger.LogError(ex, "Error while executing query via Arrow Flight.");
                 throw;
-            }
-        }
-
-        public async Task<DremioLogin> ApiLogin()
-        {
-            HttpClient Client = new HttpClient();
-            try
-            {
-                // Prepare login data as JSON
-                var loginData = new { userName = _username, password = _password };
-                var jsonLoginData = JsonSerializer.Serialize(loginData);
-                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json"); // Set content-type here
-
-                // Make the POST request
-                var response = await Client.PostAsync(_dremioServer + "/apiv2/login", content);
-                response.EnsureSuccessStatusCode(); // Throw if not a success status code
-
-                // Parse the response to retrieve the token
-                var responseData = await response.Content.ReadAsStringAsync();
-                var responseJson = JsonSerializer.Deserialize<DremioLogin>(responseData);
-
-                if (responseJson == null || string.IsNullOrEmpty(responseJson.Token))
-                {
-                    _logger.LogWarning("Dremio Token not found in response");
-                    return null;
-                }
-                return responseJson;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while getting token from Dremio.");
-                return null;
             }
         }
 
@@ -191,6 +159,7 @@ namespace DiscoData2API_Priv.Services
 
                 if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
                 {
+                    _logger.LogError("Failed to authenticate with Dremio. Token not received.");
                     throw new Exception("Failed to authenticate with Dremio. Token not received.");
                 }
 

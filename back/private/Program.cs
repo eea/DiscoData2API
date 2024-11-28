@@ -27,7 +27,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "DiscoData API (Private)",
         Version = "v1",
-        Description = "API for executing queries. ",
+        Description = @"Private API for Querying S3 Parquets via Dremio. <br>This API allows you to create, read, update, and delete SQL-based queries. <br>Queries are stored in MongoDB with a unique identifier.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";

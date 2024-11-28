@@ -85,7 +85,7 @@ namespace DiscoData2API.Controllers
             return await _mongoService.GetAllAsync();
         }
 
-       /// <summary>
+        /// <summary>
         /// Execute a query and return JSON result
         /// </summary>
         /// <param name="id">The mongoDb query ID</param>
