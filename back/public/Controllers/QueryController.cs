@@ -47,7 +47,8 @@ namespace DiscoData2API.Controllers
         ///     POST /api/query/672b84ef75e2d0b792658f24
         ///     {
         ///     "fields": ["column1", "column2"],
-        ///     "limit": 100
+        ///     "filters": ["column1 = 'value1'", "column2 = 'value2'"],
+        ///     "limit": 100,
         ///     }
         ///         
         /// </remarks>
@@ -68,7 +69,7 @@ namespace DiscoData2API.Controllers
                 }
                 else
                 {
-                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit, request.Filters);
                 }
 
                 var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
@@ -89,26 +90,38 @@ namespace DiscoData2API.Controllers
 
         #region helper
 
-        private string UpdateQueryString(string query, string[]? fields, int? limit)
+        private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
         {
-            //Update fields returned by query
+            // Update fields returned by query
             fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
-            //Update limit of query
+            // Add filters to query
+            if (filters != null && filters.Length > 0)
+            {
+                // Concatenate filters using AND
+                string filterClause = string.Join(" AND ", filters);
+
+                // Ensure WHERE clause is correctly placed
+                if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = System.Text.RegularExpressions.Regex.Replace(query, @"WHERE", $"WHERE {filterClause} AND ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                }
+                else
+                {
+                    query += $" WHERE {filterClause}";
+                }
+            }
+
+            // Ensure LIMIT is always at the end
             limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-            if (query.Contains("LIMIT"))
-            {
-                query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", $"LIMIT {limit}");
-            }
-            else
-            {
-                query += $" LIMIT {limit}";
-            }
+
+            // Remove any existing LIMIT clause and append a new one
+            query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            query += $" LIMIT {limit}";
 
             return query;
         }
-
         #endregion
     }
 }
