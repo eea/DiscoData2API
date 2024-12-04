@@ -26,7 +26,7 @@ namespace DiscoData2API.Services
             {
                   try
                   {
-                        return await _collection.Find(_ => true).ToListAsync();
+                        return await _collection.Find(p => p.IsActive).ToListAsync();
                   }
                   catch (Exception ex)
                   {

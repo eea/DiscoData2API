@@ -26,7 +26,7 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                return await _collection.Find(_ => true).ToListAsync();
+                return await _collection.Find(p => p.IsActive).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -61,7 +61,7 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                return await _collection.Find(p => p._id == id).FirstOrDefaultAsync();
+                return await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
@@ -70,23 +70,44 @@ namespace DiscoData2API_Priv.Services
             }
         }
 
-        /// <summary>
-        ///   Update a document by id
-        ///   </summary>
-        ///   <param name="document"></param>
-        public async Task<MongoDocument> UpdateAsync(MongoDocument mongoDocument)
+       /// <summary>
+       /// Update a document by id
+       /// </summary>
+       /// <param name="id">The Id of the document to update</param>
+       /// <param name="newDocument">What to change. Only pass what you wanna change</param>
+       /// <returns></returns>
+        public async Task<MongoDocument> UpdateAsync(string id, MongoDocument newDocument)
         {
             try
             {
-                await _collection.ReplaceOneAsync(p => p._id == mongoDocument._id, mongoDocument);
-                return mongoDocument;
+                // Fetch the existing document
+                var myDocument = await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
+
+                if (myDocument == null)
+                {
+                    _logger.LogWarning($"Document with id {id} not found or inactive.");
+                    return null;
+                }
+
+                // Update only the provided fields
+                myDocument.Name = !string.IsNullOrEmpty(newDocument.Name) ? newDocument.Name : myDocument.Name;
+                myDocument.Query = !string.IsNullOrEmpty(newDocument.Query) ? newDocument.Query : myDocument.Query;
+                myDocument.Fields = newDocument.Fields ?? myDocument.Fields;
+                myDocument.Version = !string.IsNullOrEmpty(newDocument.Version) ? newDocument.Version : myDocument.Version;
+                myDocument.Date = newDocument.Date ?? myDocument.Date;
+
+                // Replace the updated document
+                await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
+
+                return myDocument;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error while updating document with id {mongoDocument._id}");
+                _logger.LogError(ex, $"Error while updating document with id {id}");
                 return null;
             }
         }
+
 
         /// <summary>
         /// Delete a document by id
@@ -96,8 +117,8 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                var result = await _collection.DeleteOneAsync(p => p._id == id);
-                return result.DeletedCount > 0;
+                var result = await _collection.UpdateOneAsync(p => p._id == id, Builders<MongoDocument>.Update.Set(p => p.IsActive, false));
+                return result.ModifiedCount > 0;
             }
             catch (Exception ex)
             {

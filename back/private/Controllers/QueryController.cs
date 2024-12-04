@@ -2,6 +2,7 @@ using DiscoData2API_Priv.Services;
 using DiscoData2API_Priv.Class;
 using DiscoData2API_Priv.Model;
 using Microsoft.AspNetCore.Mvc;
+using DiscoData2API.Misc;
 
 namespace DiscoData2API.Controllers
 {
@@ -32,20 +33,27 @@ namespace DiscoData2API.Controllers
         [HttpPost("CreateQuery")]
         public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] MongoDocument request)
         {
+            if (!SqlHelper.IsSafeSql(request.Query))
+            {
+                _logger.LogWarning("SQL query contains unsafe keywords.");
+                return BadRequest("SQL query contains unsafe keywords.");
+            }
+
             return await _mongoService.CreateAsync(new MongoDocument()
             {
                 Query = request.Query,
                 Name = request.Name,
                 Version = request.Version,
-                Date = DateTime.Now,
-                Fields = request.Fields
-            });
+                Fields = request.Fields,
+                IsActive = true,
+                Date = DateTime.Now
+            });    
         }
 
         /// <summary>
         /// Read a query (MongoDB)
         /// </summary>
-        /// <param name="id"></param>
+        /// <param name="id">The Id of the query to read</param>
         /// <returns>Return a MongoDocument</returns>
         [HttpGet("ReadQuery/{id}")]
         public async Task<ActionResult<MongoDocument>> ReadQuery(string id)
@@ -56,13 +64,28 @@ namespace DiscoData2API.Controllers
         /// <summary>
         /// Update a query (MongoDB)
         /// </summary>
+        /// <param name="id">The Id of the query to update</param>
         /// <param name="request"></param>
         /// <returns>Return the updated MongoDocument</returns>
-        [HttpPost("UpdateQuery")]
-        public async Task<ActionResult<MongoDocument>> UpdateQuery([FromBody] MongoDocument request)
+        [HttpPost("UpdateQuery/{id}")]
+        public async Task<ActionResult<MongoDocument>> UpdateQuery(string id, [FromBody] MongoDocument request)
         {
-            return await _mongoService.UpdateAsync(request);
+            if (!SqlHelper.IsSafeSql(request.Query))
+            {
+                _logger.LogWarning("SQL query contains unsafe keywords.");
+                return BadRequest("SQL query contains unsafe keywords.");
+            }
+
+            var updatedDocument = await _mongoService.UpdateAsync(id, request);
+            if (updatedDocument == null)
+            {
+                _logger.LogWarning($"Document with id {id} could not be updated.");
+                return NotFound($"Document with id {id} not found.");
+            }
+
+            return Ok(updatedDocument);
         }
+
 
         /// <summary>
         /// Delete a query (MongoDB)
@@ -118,7 +141,7 @@ namespace DiscoData2API.Controllers
                 }
                 else
                 {
-                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
+                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit, request.Filters);
                 }
 
                 var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
@@ -146,23 +169,42 @@ namespace DiscoData2API.Controllers
         /// <param name="fields"></param>
         /// <param name="limit"></param>
         /// <returns></returns>
-        private string UpdateQueryString(string query, string[]? fields, int? limit)
+        private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
         {
-            //Update fields returned by query
+            // Update fields returned by query
             fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
-            //Update limit of query
-            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-            if (query.Contains("LIMIT"))
+            // Add filters to query
+            if (filters != null && filters.Length > 0)
             {
-                query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", $"LIMIT {limit}");
-            }
-            else
-            {
-                query += $" LIMIT {limit}";
+                // Concatenate filters directly without additional "AND"
+                string filterClause = string.Join(" ", filters); // Maintain operators and conditions as provided
+
+                // Ensure WHERE clause is correctly placed
+                if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.TrimEnd(); // Remove any trailing spaces
+                    query += $" AND {filterClause}";
+                }
+                else
+                {
+                    query += $" WHERE {filterClause}";
+                }
             }
 
+            // Ensure LIMIT is always at the end
+            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
+
+            // Remove any existing LIMIT clause and append a new one
+            query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            query += $" LIMIT {limit}";
+
+            if (!SqlHelper.IsSafeSql(query))
+            {
+                _logger.LogWarning("SQL query contains unsafe keywords.");
+                throw new Exception("SQL query contains unsafe keywords.");
+            }
             return query;
         }
 

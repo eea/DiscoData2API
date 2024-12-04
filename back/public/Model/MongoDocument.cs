@@ -14,6 +14,9 @@ public class MongoDocument : MongoBaseDocument
     [BsonElement("name")]
     public string Name { get; set; } = null!;
 
+    [BsonElement("isActive")]
+    public Boolean IsActive { get; set; }
+
     [BsonElement("version")]
     public string? Version { get; set; }
 

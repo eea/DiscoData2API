@@ -1,7 +1,9 @@
 using DiscoData2API.Services;
 using DiscoData2API.Class;
 using DiscoData2API.Model;
+using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace DiscoData2API.Controllers
 {
@@ -99,13 +101,14 @@ namespace DiscoData2API.Controllers
             // Add filters to query
             if (filters != null && filters.Length > 0)
             {
-                // Concatenate filters using AND
-                string filterClause = string.Join(" AND ", filters);
+                // Concatenate filters directly without additional "AND"
+                string filterClause = string.Join(" ", filters); // Maintain operators and conditions as provided
 
                 // Ensure WHERE clause is correctly placed
                 if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
                 {
-                    query = System.Text.RegularExpressions.Regex.Replace(query, @"WHERE", $"WHERE {filterClause} AND ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    query = query.TrimEnd(); // Remove any trailing spaces
+                    query += $" AND {filterClause}";
                 }
                 else
                 {
@@ -120,8 +123,14 @@ namespace DiscoData2API.Controllers
             query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             query += $" LIMIT {limit}";
 
+            if(!SqlHelper.IsSafeSql(query))
+            {
+                _logger.LogWarning("SQL query contains unsafe keywords.");
+                throw new Exception("SQL query contains unsafe keywords.");
+            }               
             return query;
         }
+
         #endregion
     }
 }
