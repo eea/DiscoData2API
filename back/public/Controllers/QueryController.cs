@@ -1,7 +1,9 @@
 using DiscoData2API.Services;
 using DiscoData2API.Class;
 using DiscoData2API.Model;
+using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace DiscoData2API.Controllers
 {
@@ -12,13 +14,16 @@ namespace DiscoData2API.Controllers
         private readonly ILogger<QueryController> _logger;
         private readonly MongoService _mongoService;
         private readonly DremioService _dremioService;
-        private int defaultLimit = 150000;
+        private readonly int _defaultLimit;
+        private readonly int _timeout;
 
         public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
         {
             _logger = logger;
             _mongoService = mongoService;
             _dremioService = dremioService;
+            _defaultLimit = dremioService._limit;
+            _timeout = dremioService._timeout;
         }
 
         /// <summary>
@@ -44,7 +49,8 @@ namespace DiscoData2API.Controllers
         ///     POST /api/query/672b84ef75e2d0b792658f24
         ///     {
         ///     "fields": ["column1", "column2"],
-        ///     "limit": 100
+        ///     "filters": ["column1 = 'value1'", "column2 = 'value2'"],
+        ///     "limit": 100,
         ///     }
         ///         
         /// </remarks>
@@ -53,42 +59,75 @@ namespace DiscoData2API.Controllers
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
-            MongoDocument? mongoDoc = await _mongoService.GetById(id);
-
-            if (mongoDoc == null)
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
+            try
             {
-                _logger.LogError($"Query with id {id} not found");
-                return NotFound();
-            }
-            else
-            {  
-                mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit);
-            }
+                MongoDocument? mongoDoc = await _mongoService.GetById(id);
 
-            var result = await _dremioService.ExecuteQuery(mongoDoc.Query);
+                if (mongoDoc == null)
+                {
+                    _logger.LogError($"Query with id {id} not found");
+                    return NotFound();
+                }
+                else
+                {
+                    mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit, request.Filters);
+                }
 
-            return result;
+                var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
+
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("Task was canceled due to timeout.");
+                return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return ex.Message;
+            }
         }
 
         #region helper
 
-        private string UpdateQueryString(string query, string[]? fields, int? limit)
+        private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
         {
-            //Update fields returned by query
-            fields = fields != null ? fields : new string[] { "*" };
+            // Update fields returned by query
+            fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
-            //Update limit of query
-            limit = limit.HasValue && limit != 0 ? limit.Value : defaultLimit;
-            if (query.Contains("LIMIT"))
+            // Add filters to query
+            if (filters != null && filters.Length > 0)
             {
-                query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", $"LIMIT {limit}");
-            }
-            else
-            {
-                query += $" LIMIT {limit}";
+                // Concatenate filters directly without additional "AND"
+                string filterClause = string.Join(" ", filters); // Maintain operators and conditions as provided
+
+                // Ensure WHERE clause is correctly placed
+                if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.TrimEnd(); // Remove any trailing spaces
+                    query += $" AND {filterClause}";
+                }
+                else
+                {
+                    query += $" WHERE {filterClause}";
+                }
             }
 
+            // Ensure LIMIT is always at the end
+            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
+
+            // Remove any existing LIMIT clause and append a new one
+            query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            query += $" LIMIT {limit}";
+
+            if(!SqlHelper.IsSafeSql(query))
+            {
+                _logger.LogWarning("SQL query contains unsafe keywords.");
+                throw new Exception("SQL query contains unsafe keywords.");
+            }               
             return query;
         }
 

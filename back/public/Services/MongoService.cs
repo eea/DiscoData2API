@@ -15,7 +15,7 @@ namespace DiscoData2API.Services
                   _logger = logger;
                   var mongoClient = new MongoClient(mongoSettings.Value.ConnectionString);
                   var database = mongoClient.GetDatabase(mongoSettings.Value.DatabaseName);
-                  _collection = database.GetCollection<MongoDocument>(MyEnum.Collection.discodata_queries.ToString());
+                  _collection = database.GetCollection<MongoDocument>(mongoSettings.Value.CollectionName);
             }
 
             /// <summary>
@@ -26,7 +26,7 @@ namespace DiscoData2API.Services
             {
                   try
                   {
-                        return await _collection.Find(_ => true).ToListAsync();
+                        return await _collection.Find(p => p.IsActive).ToListAsync();
                   }
                   catch (Exception ex)
                   {

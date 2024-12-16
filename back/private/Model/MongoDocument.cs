@@ -1,4 +1,4 @@
-namespace DiscoData2API.Model;
+namespace DiscoData2API_Priv.Model;
 
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -9,7 +9,7 @@ public class MongoDocument : MongoBaseDocument
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string _id { get; set; } = null!;
+    public string? _id { get; set; } = null!;
 
     [BsonElement("name")]
     public string Name { get; set; } = null!;
@@ -21,13 +21,13 @@ public class MongoDocument : MongoBaseDocument
     public string? Version { get; set; }
 
     [BsonElement("date")]
-    public DateTime Date { get; set; }
+    public DateTime? Date { get; set; }
 
     [BsonElement("query")]
-    public string Query { get; set; } = null!;
+    public string? Query { get; set; } = null!;
 
     [BsonElement("fields")]
-    public List<Field> Fileds { get; set; } = null!;
+    public List<Field>? Fields { get; set; } = null!;
 }
 
 public class Field

@@ -1,6 +1,6 @@
 using System.Reflection;
 using DiscoData2API_Priv.Services;
-using DiscoData2API_Library.Class;
+using DiscoData2API_Priv.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -20,13 +20,14 @@ builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Private)",
         Version = "v1",
-        Description = "API for executing queries. ",
+        Description = @"Private API for Querying S3 Parquets via Dremio. <br>This API allows you to create, read, update, and delete SQL-based queries. <br>Queries are stored in MongoDB with a unique identifier.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";

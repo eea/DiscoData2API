@@ -1,9 +1,10 @@
-namespace DiscoData2API.Class
+namespace DiscoData2API_Priv.Class
 {
     public class ConnectionSettingsMongo
     {
         public string ConnectionString { get; set; } = null!;
         public string DatabaseName { get; set; } = null!;
         public string CollectionName { get; set; } = null!;
+
     }
 }

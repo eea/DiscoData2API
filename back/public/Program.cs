@@ -22,13 +22,16 @@ builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Public)",
         Version = "v1",
-        Description = "API for executing queries.",
+        Description = @"Public API for Querying S3 Parquets via Dremio,<br>
+        This API allows you to retrieve a catalog of available SQL-based queries. <br>
+        To fetch data, use the unique identifier associated with a specific query.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -36,7 +39,6 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -48,8 +50,6 @@ app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-
-
 });
 
 app.UseHttpsRedirection();

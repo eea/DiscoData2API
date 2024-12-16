@@ -1,6 +1,78 @@
 # DiscoData2API
 DiscoData v2 using DataHub infrastructure
 
+## Documentation - API Reference
+
+The public and private API share the same first 2 calls. The others are only available in the private API.
+
+#### Get catalog of queries stored in MongoDB - PRIVATE & PUBLIC
+
+```http
+  GET /api/Query/GetCatalog
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `N/A`     | `N/A`    | **Required**. No parameters required |
+
+#### Execute a query and Fetch data - PRIVATE & PUBLIC
+
+```http
+  POST /api/query/${id}
+```
+
+| Parameter | Type     | Description                                       |
+| :-------- | :------- | :------------------------------------------------ |
+| `id`      | `string` | **Required**. The Id of mongoDb document to fetch |
+| `fields`      | `array[string]` | **Optional**. List of Fields the Select query should fetch |
+| `filters`      | `array[string]` | **Optional**. List of filters to fine tune the result of the query  |
+
+#### Create a query - PRIVATE
+
+```http
+  POST /api/createQuery
+```
+
+| Parameter | Type     | Description                                       |
+| :-------- | :------- | :------------------------------------------------ |
+| `name`      | `string` | **Required**. Name of the query |
+| `version`      | `string` | **Required**. i.e : v1, v2.1 Version of the query |
+| `query`      | `string` | **Required**. the SQL query |
+| `fields`      | `array[name:string,type:string,description:description]` | **Required**. List of fields, array of items with the name, the type and the description of each fields  |
+
+#### Read a query stored in MongoDB - PRIVATE
+
+```http
+  GET /api/readQuery/${id}
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `id`     | `tring`    | **Required**. The mongoDb ID of the query document |
+
+#### Update a query - PRIVATE API
+
+```http
+  POST /api/updateQuery/
+```
+| Parameter | Type     | Description                                       |
+| :-------- | :------- | :------------------------------------------------ |
+| `id`      | `string` | **Required**. The id of the query |
+| `name`      | `string` | **Optional**. Name of the query |
+| `version`      | `string` | **Optional**. i.e : v1, v2.1 Version of the query |
+| `query`      | `string` | **Optional**. the SQL query |
+| `fields`      | `array[name:string,type:string,description:description]` | **Optional**. List of fields, array of items with the name, the type and the description of each fields  |
+
+#### Delete a query - PRIVATE
+
+```http
+  POST /api/deleteQuery/${id}
+```
+
+| Parameter | Type     | Description                                       |
+| :-------- | :------- | :------------------------------------------------ |
+| `id`      | `string` | **Required**. The Id of mongoDb document to delete |
+
 ## Docker Image
 
 ### PUBLIC API

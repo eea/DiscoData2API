@@ -19,8 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="DiscoData2API_Library">
-      <HintPath>..\classLibrary\bin\Debug\net8.0\DiscoData2API_Library.dll</HintPath>
-    </Reference>
+    <Folder Include="Class\" />
   </ItemGroup>
 </Project>
