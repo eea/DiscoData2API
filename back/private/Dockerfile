@@ -32,6 +32,8 @@ RUN dotnet publish "private/DiscoData2API_Priv.csproj" -c Release -o /app/publis
 
 # Build the final image
 FROM base AS final
+ARG ENVIRONMENT
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Development
