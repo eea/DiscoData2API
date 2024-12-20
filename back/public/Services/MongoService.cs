@@ -3,6 +3,7 @@ using DiscoData2API.Class;
 using DiscoData2API.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using DiscoData2API_Priv.Model;
 
 namespace DiscoData2API.Services
 {

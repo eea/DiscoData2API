@@ -4,6 +4,7 @@ using DiscoData2API.Model;
 using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using DiscoData2API_Priv.Model;
 
 namespace DiscoData2API.Controllers
 {
