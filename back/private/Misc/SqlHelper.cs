@@ -8,7 +8,7 @@ namespace DiscoData2API.Misc
             {
                 return true;
             }
-            var blacklist = new[] { ";", "--", "/*", "*/", "xp_", "sp_", "EXEC", "DROP", "INSERT", "DELETE" };
+            var blacklist = new[] { ";", "--", "/*", "*/", "xp_", "sp_", "EXEC", "DROP", "INSERT", "DELETE","ALTER" };
             return !blacklist.Any(keyword => sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0);
         }
     }
