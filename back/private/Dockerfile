@@ -36,4 +36,9 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENV ASPNETCORE_URLS=http://+:5243
+
+# copy appropriate environment configuration
+COPY Configs/appsettings_$ENVIRONMENT.json  appsettings.json
+
+
 ENTRYPOINT ["dotnet", "DiscoData2API_Priv.dll"]
