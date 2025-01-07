@@ -14,6 +14,9 @@ public class MongoDocument : MongoBaseDocument
     [BsonElement("name")]
     public string Name { get; set; } = null!;
 
+    [BsonElement("userAdded")]
+    public string UserAdded { get; set; } = null!;
+
     [BsonElement("isActive")]
     public Boolean IsActive { get; set; }
 
@@ -32,12 +35,15 @@ public class MongoDocument : MongoBaseDocument
 
 public class Field
 {
-    [BsonElement("name")]
-    public string Name { get; set; } = null!;
+     [BsonElement("name")]
+     public string Name { get; set; } = null!;
 
     [BsonElement("type")]
     public string Type { get; set; } = null!;
 
-    [BsonElement("description")]
-    public string Description { get; set; } = null!;
+    [BsonElement("isNullable")]
+    public bool IsNullable { get; set; }
+
+    [BsonElement("columnSize")]
+    public string ColumnSize { get; set; }
 }

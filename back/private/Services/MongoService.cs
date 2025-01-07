@@ -35,6 +35,19 @@ namespace DiscoData2API_Priv.Services
             }
         }
 
+        public async Task<List<MongoDocument>> GetAllByUserAsync(string userAdded)
+        {
+            try
+            {
+                return await _collection.Find(p => p.IsActive && p.UserAdded == userAdded).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting documents for a specific user");
+                return new List<MongoDocument>();
+            }
+        }
+
         /// <summary>
         /// Create a document
         /// </summary>
@@ -70,12 +83,12 @@ namespace DiscoData2API_Priv.Services
             }
         }
 
-       /// <summary>
-       /// Update a document by id
-       /// </summary>
-       /// <param name="id">The Id of the document to update</param>
-       /// <param name="newDocument">What to change. Only pass what you wanna change</param>
-       /// <returns></returns>
+        /// <summary>
+        /// Update a document by id
+        /// </summary>
+        /// <param name="id">The Id of the document to update</param>
+        /// <param name="newDocument">What to change. Only pass what you wanna change</param>
+        /// <returns></returns>
         public async Task<MongoDocument> UpdateAsync(string id, MongoDocument newDocument)
         {
             try
@@ -107,7 +120,6 @@ namespace DiscoData2API_Priv.Services
                 return null;
             }
         }
-
 
         /// <summary>
         /// Delete a document by id
