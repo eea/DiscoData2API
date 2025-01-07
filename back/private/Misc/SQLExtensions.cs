@@ -9,7 +9,9 @@ namespace DiscoData2API_Priv.Misc
     {
 		public static bool ValidateSQL(string query)
 		{
-			return ValidateSQL(query, SelectRegex);
+			return ValidateSQL(query, SelectRegex) && 
+				   ValidateSQL(query,ModifyRegex) && 
+				   ValidateSQL(query, AsciiRegex);
 		}
 
 		private static bool ValidateSQL(string sql, Regex keywordRegex)
@@ -145,8 +147,8 @@ namespace DiscoData2API_Priv.Misc
 		private static void LoadFromConfig()
 		{
 			_asciiPattern = "[^\u0000-\u007F]";
-			_selectpattern = @"\b(union|information_schema|insert|update|delete|truncate|drop|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
-			_modifypattern = @"\b(union|information_schema|truncate|drop|alter|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
+			_selectpattern = @"\b(union|information_schema|insert|update|delete|truncate|drop|alter|describe|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)|(--)|(\/*)|(*\/)";
+			_modifypattern = @"\b(union|information_schema|truncate|drop|alter|describe|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)|(--)|(\/*)|(*\/)";
 			_rejectIfCommentFound = true;
 			_commentTagSets = new string[2, 2] { { "--", "" }, { "/*", "*/" } };
 		}
