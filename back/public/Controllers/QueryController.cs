@@ -3,8 +3,7 @@ using DiscoData2API.Class;
 using DiscoData2API.Model;
 using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
-using DiscoData2API_Priv.Model;
+
 
 namespace DiscoData2API.Controllers
 {
@@ -28,21 +27,21 @@ namespace DiscoData2API.Controllers
         }
 
         /// <summary>
-        /// Get catalog of queries from MongoDB
+        /// Get catalog of pre-processed views
         /// </summary>
-        /// <returns>Return a list of MongoDocument class</returns>
+        /// <returns>Returns a list of pre-processed views</returns>
         /// 
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
+        public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog()
         {
-            return await _mongoService.GetAllAsync();
+            return await  _mongoService.GetAllAsync();
         }
 
         /// <summary>
-        /// Execute a query and return JSON result
+        /// Executes a query and returns a JSON with the results
         /// </summary>
-        /// <param name="id">The mongoDb query ID</param>
-        /// <param name="request">The JSON body of the httpRequest</param>
+        /// <param name="id">The query ID</param>
+        /// <param name="request">The JSON body of the request</param>
         /// <returns></returns>
         /// <remarks>
         /// Sample request:
