@@ -142,7 +142,7 @@ namespace DiscoData2API.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                MongoDocument mongoDoc = await _mongoService.ReadAsync(id);
+                MongoDocument? mongoDoc = await _mongoService.ReadAsync(id);
 
                 if (mongoDoc == null)
                 {
@@ -175,6 +175,7 @@ namespace DiscoData2API.Controllers
         private async Task<List<Field>> extractFields(string? query)
         {
             List<Field> fieldsList = new List<Field>();
+
             try
             {
                 // Extract all table names from the query
@@ -188,15 +189,18 @@ namespace DiscoData2API.Controllers
                     var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
                     var columns = JsonSerializer.Deserialize<List<List<DremioColumn>>>(result);
 
-                    foreach (var column in columns[0])
+                    if (columns != null)
                     {
-                        fieldsList.Add(new Field()
+                        foreach (var column in columns[0])
                         {
-                            Name = column.COLUMN_NAME,
-                            Type = column.DATA_TYPE,
-                            IsNullable = column.IS_NULLABLE == "YES",
-                            ColumnSize = column.COLUMN_SIZE.ToString()
-                        });
+                            fieldsList.Add(new Field()
+                            {
+                                Name = column.COLUMN_NAME,
+                                Type = column.DATA_TYPE,
+                                IsNullable = column.IS_NULLABLE == "YES",
+                                ColumnSize = column.COLUMN_SIZE.ToString()
+                            });
+                        }
                     }
                 }
 
@@ -239,6 +243,7 @@ namespace DiscoData2API.Controllers
         /// <param name="query"></param>
         /// <param name="fields"></param>
         /// <param name="limit"></param>
+        /// <param name="filters"></param>
         /// <returns></returns>
         private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
         {

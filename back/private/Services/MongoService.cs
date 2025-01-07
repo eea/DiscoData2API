@@ -51,8 +51,8 @@ namespace DiscoData2API_Priv.Services
         /// <summary>
         /// Create a document
         /// </summary>
-        /// <param name="document"></param>
-        public async Task<MongoDocument> CreateAsync(MongoDocument mongoDocument)
+        /// <param name="mongoDocument"></param>
+        public async Task<MongoDocument?> CreateAsync(MongoDocument mongoDocument)
         {
             try
             {
@@ -70,7 +70,7 @@ namespace DiscoData2API_Priv.Services
         /// Get document by id
         /// </summary>
         /// <param name="id"></param>
-        public async Task<MongoDocument> ReadAsync(string id)
+        public async Task<MongoDocument?> ReadAsync(string id)
         {
             try
             {
@@ -89,7 +89,7 @@ namespace DiscoData2API_Priv.Services
         /// <param name="id">The Id of the document to update</param>
         /// <param name="newDocument">What to change. Only pass what you wanna change</param>
         /// <returns></returns>
-        public async Task<MongoDocument> UpdateAsync(string id, MongoDocument newDocument)
+        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument)
         {
             try
             {

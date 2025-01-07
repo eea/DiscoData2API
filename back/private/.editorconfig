@@ -1,0 +1,13 @@
+﻿[*.cs]
+
+# IDE0055: Fijar formato
+dotnet_diagnostic.IDE0055.severity = none
+
+# CS1591: Falta el comentario XML para el tipo o miembro visible públicamente
+dotnet_diagnostic.CS1591.severity = none
+
+# CS8604: Posible argumento de referencia nulo
+dotnet_diagnostic.CS8604.severity = none
+
+# CA1805: No inicializar innecesariamente
+dotnet_diagnostic.CA1805.severity = none

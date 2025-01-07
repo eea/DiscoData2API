@@ -3,8 +3,10 @@ using SampleSQLInjectionDetectionApp;
 
 namespace DiscoData2API_Priv.Misc
 {
-	public static class SQLExtensions
-	{
+#pragma warning disable CS1591 // Falta el comentario XML para el tipo o miembro visible públicamente
+    public static class SQLExtensions
+#pragma warning restore CS1591 // Falta el comentario XML para el tipo o miembro visible públicamente
+    {
 		public static bool ValidateSQL(string query)
 		{
 			return ValidateSQL(query, SelectRegex);
@@ -72,15 +74,18 @@ namespace DiscoData2API_Priv.Misc
 				return sqlWithStringsRemoved;
 
 			//Extract comments from the SQL because they may contain delimiters that throw off the parsing
-			for (int i = 0; i < CommentTagSets.GetLength(0); i++)
+			if (CommentTagSets != null)
 			{
-				var result2 = RemoveCommentIfFound(sqlWithStringsRemoved, firstOccurrenceOfDelimiter, CommentTagSets[i, 0], CommentTagSets[i, 1]);
-				#region NEW SYNTAX OPTION BIT 3 of 3
-				//if (result.stopParsing)
-				//	return result.sql;
-				#endregion
-				if (result2.Item1)
-					return result2.Item2;
+				for (int i = 0; i < CommentTagSets.GetLength(0); i++)
+				{
+					var result2 = RemoveCommentIfFound(sqlWithStringsRemoved, firstOccurrenceOfDelimiter, CommentTagSets[i, 0], CommentTagSets[i, 1]);
+					#region NEW SYNTAX OPTION BIT 3 of 3
+					//if (result.stopParsing)
+					//	return result.sql;
+					#endregion
+					if (result2.Item1)
+						return result2.Item2;
+				}
 			}
 
 			int secondOccurrenceOfDelimiter = sqlWithStringsRemoved.IndexOf(delimiter, firstOccurrenceOfDelimiter + 1);
@@ -108,7 +113,7 @@ namespace DiscoData2API_Priv.Misc
 			int commentStart = sql.IndexOf(commentBeginTag);
 			if (commentStart > -1 && commentStart < firstOccurrenceOfDelimiter)
 			{
-				if (RejectIfCommentFound)
+				if (RejectIfCommentFound!=null)
 					throw new SQLFormattingException($"Comment {commentBeginTag} found in SQL");
 				if (!string.IsNullOrWhiteSpace(commentEndTag))
 				{
@@ -141,15 +146,15 @@ namespace DiscoData2API_Priv.Misc
 		{
 			_asciiPattern = "[^\u0000-\u007F]";
 			_selectpattern = @"\b(union|information_schema|insert|update|delete|truncate|drop|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
-			_modifypattern = @"\b(union|information_schema|truncate|drop|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
+			_modifypattern = @"\b(union|information_schema|truncate|drop|alter|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
 			_rejectIfCommentFound = true;
 			_commentTagSets = new string[2, 2] { { "--", "" }, { "/*", "*/" } };
 		}
 
 		#region Comment Tag Sets
 		//Microsoft SQL Server supports two comment syntaxes.  1) Anything following --,  2) Anything enclosed in /* */
-		private static string[,] _commentTagSets = null;
-		public static string[,] CommentTagSets
+		private static string[,]? _commentTagSets = null;
+		public static string[,]? CommentTagSets
 		{
 			get
 			{
@@ -163,7 +168,7 @@ namespace DiscoData2API_Priv.Misc
 		#endregion
 		#region RejectComments Flag
 		private static bool? _rejectIfCommentFound = null;
-		public static bool RejectIfCommentFound
+		public static bool? RejectIfCommentFound
 		{
 			get
 			{
@@ -171,13 +176,13 @@ namespace DiscoData2API_Priv.Misc
 				{
 					LoadFromConfig();
 				}
-				return (bool)_rejectIfCommentFound;
+				return (bool?) _rejectIfCommentFound;
 			}
 		}
 		#endregion
 		#region select pattern and regex
-		private static string _selectpattern;
-		public static string SelectPattern
+		private static string? _selectpattern;
+		public static string? SelectPattern
 		{
 			get
 			{
@@ -188,8 +193,8 @@ namespace DiscoData2API_Priv.Misc
 				return _selectpattern;
 			}
 		}
-		private static Regex _selectRegex = null;
-		public static Regex SelectRegex
+		private static Regex? _selectRegex = null;
+		public static Regex? SelectRegex
 		{
 			get
 			{
@@ -203,8 +208,8 @@ namespace DiscoData2API_Priv.Misc
 		#endregion
 
 		#region Modify Pattern and regex
-		static string _modifypattern;
-		public static string ModifyPattern
+		static string? _modifypattern;
+		public static string? ModifyPattern
 		{
 			get
 			{
@@ -215,8 +220,8 @@ namespace DiscoData2API_Priv.Misc
 				return _modifypattern;
 			}
 		}
-		private static Regex _modifyRegex = null;
-		public static Regex ModifyRegex
+		private static Regex? _modifyRegex = null;
+		public static Regex? ModifyRegex
 		{
 			get
 			{
@@ -230,8 +235,8 @@ namespace DiscoData2API_Priv.Misc
 		#endregion
 
 		#region ASCII pattern and regex
-		private static string _asciiPattern;
-		public static string AsciiPattern
+		private static string? _asciiPattern;
+		public static string? AsciiPattern
 		{
 			get
 			{
@@ -243,8 +248,8 @@ namespace DiscoData2API_Priv.Misc
 			}
 		}
 
-		private static Regex _asciiRegex = null;
-		public static Regex AsciiRegex
+		private static Regex? _asciiRegex = null;
+		public static Regex? AsciiRegex
 		{
 			get
 			{

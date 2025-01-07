@@ -9,10 +9,16 @@ public class MongoDocument : MongoBaseDocument
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string? _id { get; set; } = null!;
+    public string _id { get; set; } = null!;
+
+    [BsonElement("id")]
+    public string Id { get; set; } = null!;
 
     [BsonElement("name")]
     public string Name { get; set; } = null!;
+
+    [BsonElement("description")]
+    public string Description { get; set; } = null!;
 
     [BsonElement("userAdded")]
     public string UserAdded { get; set; } = null!;
@@ -27,7 +33,7 @@ public class MongoDocument : MongoBaseDocument
     public DateTime? Date { get; set; }
 
     [BsonElement("query")]
-    public string? Query { get; set; } = null!;
+    public string Query { get; set; } = null!;
 
     [BsonElement("fields")]
     public List<Field>? Fields { get; set; } = null!;
@@ -45,5 +51,5 @@ public class Field
     public bool IsNullable { get; set; }
 
     [BsonElement("columnSize")]
-    public string ColumnSize { get; set; }
+    public string? ColumnSize { get; set; }
 }
