@@ -2,7 +2,9 @@ using DiscoData2API_Priv.Services;
 using DiscoData2API_Priv.Class;
 using DiscoData2API_Priv.Model;
 using Microsoft.AspNetCore.Mvc;
-using DiscoData2API.Misc;
+using DiscoData2API_Priv.Misc;
+using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace DiscoData2API.Controllers
 {
@@ -33,7 +35,7 @@ namespace DiscoData2API.Controllers
         [HttpPost("CreateQuery")]
         public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] MongoDocument request)
         {
-            if (!SqlHelper.IsSafeSql(request.Query))
+            if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
             {
                 _logger.LogWarning("SQL query contains unsafe keywords.");
                 return BadRequest("SQL query contains unsafe keywords.");
@@ -43,11 +45,12 @@ namespace DiscoData2API.Controllers
             {
                 Query = request.Query,
                 Name = request.Name,
+                UserAdded = request.UserAdded,
                 Version = request.Version,
-                Fields = request.Fields,
+                Fields = extractFields(request.Query).Result,
                 IsActive = true,
                 Date = DateTime.Now
-            });    
+            });
         }
 
         /// <summary>
@@ -70,11 +73,14 @@ namespace DiscoData2API.Controllers
         [HttpPost("UpdateQuery/{id}")]
         public async Task<ActionResult<MongoDocument>> UpdateQuery(string id, [FromBody] MongoDocument request)
         {
-            if (!SqlHelper.IsSafeSql(request.Query))
+            if (request.Query == null || !SQLExtensions.ValidateSQL(request.Query))
             {
                 _logger.LogWarning("SQL query contains unsafe keywords.");
                 return BadRequest("SQL query contains unsafe keywords.");
             }
+
+            //we update the fields in case the query changed
+            request.Fields = extractFields(request.Query).Result;
 
             var updatedDocument = await _mongoService.UpdateAsync(id, request);
             if (updatedDocument == null)
@@ -85,7 +91,6 @@ namespace DiscoData2API.Controllers
 
             return Ok(updatedDocument);
         }
-
 
         /// <summary>
         /// Delete a query (MongoDB)
@@ -103,9 +108,14 @@ namespace DiscoData2API.Controllers
         /// </summary>
         /// <returns>Return a list of MongoDocument class</returns>
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog()
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery]string userAdded)
         {
-            return await _mongoService.GetAllAsync();
+            if (string.IsNullOrEmpty(userAdded))
+            {
+                return await _mongoService.GetAllAsync();
+            }
+
+            return await _mongoService.GetAllByUserAsync(userAdded);
         }
 
         /// <summary>
@@ -160,6 +170,67 @@ namespace DiscoData2API.Controllers
             }
         }
 
+        #region Extract fields from query
+
+        private async Task<List<Field>> extractFields(string? query)
+        {
+            List<Field> fieldsList = new List<Field>();
+            try
+            {
+                // Extract all table names from the query
+                List<string> tables = ExtractTableNames(query);
+
+                // Get the columns of each table
+                foreach (var table in tables.Distinct())
+                {
+                    var queryColumns = $"SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table}';";
+                    using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+                    var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
+                    var columns = JsonSerializer.Deserialize<List<List<DremioColumn>>>(result);
+
+                    foreach (var column in columns[0])
+                    {
+                        fieldsList.Add(new Field()
+                        {
+                            Name = column.COLUMN_NAME,
+                            Type = column.DATA_TYPE,
+                            IsNullable = column.IS_NULLABLE == "YES",
+                            ColumnSize = column.COLUMN_SIZE.ToString()
+                        });
+                    }
+                }
+
+                return fieldsList;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return fieldsList;
+            }
+        }
+        private List<string> ExtractTableNames(string query)
+        {
+            List<string> tableNames = new List<string>();
+
+            // Regular expression to match table names
+            string pattern = @"(?:FROM|JOIN)\s+((?:\""[^\""]+\""|\[[^\]]+\]|\w+)(?:\.(?:\""[^\""]+\""|\[[^\]]+\]|\w+))*)";
+            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+
+            MatchCollection matches = regex.Matches(query);
+            foreach (Match match in matches)
+            {
+                if (match.Groups.Count > 1)
+                {
+                    string tableName = match.Groups[1].Value.LastIndexOf(".") > 0 ? match.Groups[1].Value.Split('.').Last() : match.Groups[1].Value;
+                    tableNames.Add(tableName);
+                }
+            }
+
+            return tableNames;
+        }
+
+        #endregion
+
         #region helper
 
         /// <summary>
@@ -200,7 +271,7 @@ namespace DiscoData2API.Controllers
             query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             query += $" LIMIT {limit}";
 
-            if (!SqlHelper.IsSafeSql(query))
+            if (!SQLExtensions.ValidateSQL(query))
             {
                 _logger.LogWarning("SQL query contains unsafe keywords.");
                 throw new Exception("SQL query contains unsafe keywords.");
