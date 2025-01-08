@@ -81,6 +81,14 @@ public class Field
     [BsonElement("type")]
     public string Type { get; set; } = null!;
 
+
+    [BsonElement("isNullable")]
+    public bool IsNullable { get; set; } = true!;
+
+    [BsonElement("columnSize")]
+    public string? ColumnSize { get; set; }
+
+    [BsonIgnoreIfNull]
     [BsonElement("description")]
     public string Description { get; set; } = null!;
 }
