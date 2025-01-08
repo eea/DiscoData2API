@@ -1,0 +1,34 @@
+name: Private API Dev BM
+# only trigger on pull request closed events
+on:
+  push:
+    branches: [ "Develop_Bilbomatica" ]
+    paths:
+      - back/private/**    
+jobs:
+  build:
+    runs-on: ubuntu-latest 
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Build the Docker image
+
+      working-directory:  back/
+      run: docker build -f private/Dockerfile  --build-arg ENVIRONMENT=dev_bm  -t txalaparta/discodata-private_api_dev_bm:latest .
+
+    - uses: docker/login-action@v3
+      name: Login to Docker Hub      
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      
+    - uses: actions/checkout@v4
+    - name: Push
+      working-directory: back/private/
+      run: docker push txalaparta/discodata-private_api_dev_bm:latest
+
+    - uses: actions/checkout@v4
+    - name: Remove the Docker image to free space
+      working-directory: back/
+      run: docker image rmi -f txalaparta/discodata-private_api_dev_bm:latest

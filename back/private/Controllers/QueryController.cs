@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using DiscoData2API_Priv.Misc;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using ZstdSharp.Unsafe;
 
 namespace DiscoData2API.Controllers
 {
@@ -32,25 +33,37 @@ namespace DiscoData2API.Controllers
         /// </summary>
         /// <param name="request"></param>
         /// <returns>Return the Json document saved</returns>
+        /// <response code="201">Returns the newly created query</response>
+        /// <response code="400">If the item is null</response>
         [HttpPost("CreateQuery")]
-        public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] MongoDocument request)
+        public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] CreateViewModel request)
         {
-            if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
-            {
-                _logger.LogWarning("SQL query contains unsafe keywords.");
-                return BadRequest("SQL query contains unsafe keywords.");
-            }
 
-            return await _mongoService.CreateAsync(new MongoDocument()
+            try
             {
-                Query = request.Query,
-                Name = request.Name,
-                UserAdded = request.UserAdded,
-                Version = request.Version,
-                Fields = extractFields(request.Query).Result,
-                IsActive = true,
-                Date = DateTime.Now
-            });
+                if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
+                {
+                    _logger.LogWarning("SQL query contains unsafe keywords.");
+                    return BadRequest("SQL query contains unsafe keywords.");
+                }
+
+                return await _mongoService.CreateAsync(new MongoDocument()
+                {
+                    Id = System.Guid.NewGuid().ToString(),
+                    Query = request.Query,
+                    Name = request.Name,
+                    UserAdded = request.User,
+                    Version = request.Version,
+                    Description = request.Description,
+                    Fields = extractFieldsFromQuery(request.Query).Result,
+                    IsActive = true,
+                    Date = DateTime.Now
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Invalid query");
+            }
         }
 
         /// <summary>
@@ -80,7 +93,7 @@ namespace DiscoData2API.Controllers
             }
 
             //we update the fields in case the query changed
-            request.Fields = extractFields(request.Query).Result;
+            request.Fields = extractFieldsFromQuery(request.Query).Result;
 
             var updatedDocument = await _mongoService.UpdateAsync(id, request);
             if (updatedDocument == null)
@@ -106,9 +119,10 @@ namespace DiscoData2API.Controllers
         /// <summary>
         /// Get catalog of queries (MongoDB)
         /// </summary>
+        /// <param name="userAdded">The username that creatde the query</param>
         /// <returns>Return a list of MongoDocument class</returns>
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery]string userAdded)
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery]string? userAdded)
         {
             if (string.IsNullOrEmpty(userAdded))
             {
@@ -142,7 +156,7 @@ namespace DiscoData2API.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                MongoDocument mongoDoc = await _mongoService.ReadAsync(id);
+                MongoDocument? mongoDoc = await _mongoService.ReadAsync(id);
 
                 if (mongoDoc == null)
                 {
@@ -166,15 +180,63 @@ namespace DiscoData2API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return ex.Message;
+                throw;
             }
         }
 
         #region Extract fields from query
 
-        private async Task<List<Field>> extractFields(string? query)
+        private async Task<List<Field>> extractFieldsFromQuery(string? query)
         {
             List<Field> fieldsList = new List<Field>();
+
+            try
+            {
+                var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+                var queryColumns = string.Format(@" CREATE TABLE if not exists {0} AS
+                            select * from ({1} ) limit 1;", temp_table_name, query);
+                var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
+
+
+                queryColumns = $"describe table {temp_table_name}";
+                result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
+
+                var columns = JsonSerializer.Deserialize<List<List<DremioColumn>>>(result);
+
+                if (columns != null)
+                {
+                    foreach (var column in columns[0])
+                    {
+                        fieldsList.Add(new Field()
+                        {
+                            Name = column.COLUMN_NAME,
+                            Type = column.COLUMN_NAME == "geometry" || column.COLUMN_NAME=="geom" ? "geometry" :  column.DATA_TYPE,
+                            IsNullable = column.IS_NULLABLE == "YES",
+                            ColumnSize = column.COLUMN_SIZE.ToString()
+                        });
+                    }
+                }
+
+                result = await _dremioService.ExecuteQuery(string.Format("DROP TABLE {0}", temp_table_name), cts.Token);
+
+                return fieldsList;
+            }
+        
+ 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+
+                throw; // new Exception("Invalid query");
+                
+            }
+        }
+
+private async Task<List<Field>> extractFields(string? query)
+        {
+            List<Field> fieldsList = new List<Field>();
+
             try
             {
                 // Extract all table names from the query
@@ -188,15 +250,18 @@ namespace DiscoData2API.Controllers
                     var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
                     var columns = JsonSerializer.Deserialize<List<List<DremioColumn>>>(result);
 
-                    foreach (var column in columns[0])
+                    if (columns != null)
                     {
-                        fieldsList.Add(new Field()
+                        foreach (var column in columns[0])
                         {
-                            Name = column.COLUMN_NAME,
-                            Type = column.DATA_TYPE,
-                            IsNullable = column.IS_NULLABLE == "YES",
-                            ColumnSize = column.COLUMN_SIZE.ToString()
-                        });
+                            fieldsList.Add(new Field()
+                            {
+                                Name = column.COLUMN_NAME,
+                                Type = column.DATA_TYPE,
+                                IsNullable = column.IS_NULLABLE == "YES",
+                                ColumnSize = column.COLUMN_SIZE.ToString()
+                            });
+                        }
                     }
                 }
 
@@ -239,6 +304,7 @@ namespace DiscoData2API.Controllers
         /// <param name="query"></param>
         /// <param name="fields"></param>
         /// <param name="limit"></param>
+        /// <param name="filters"></param>
         /// <returns></returns>
         private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
         {

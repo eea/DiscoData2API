@@ -20,5 +20,6 @@
 
   <ItemGroup>
     <Folder Include="Class\" />
+    <Folder Include="Logs\" />
   </ItemGroup>
 </Project>

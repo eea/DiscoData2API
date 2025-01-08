@@ -3,6 +3,8 @@ using DiscoData2API.Class;
 using DiscoData2API.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using System.Collections.Generic;
+
 
 namespace DiscoData2API.Services
 {
@@ -22,25 +24,26 @@ namespace DiscoData2API.Services
             /// Get all documents from the collection
             /// </summary>
             /// <returns></returns>
-            public async Task<List<MongoDocument>> GetAllAsync()
+            public async Task<List<MongoPublicDocument>> GetAllAsync()
             {
-                  try
-                  {
-                        return await _collection.Find(p => p.IsActive).ToListAsync();
-                  }
-                  catch (Exception ex)
-                  {
-                        _logger.LogError(ex, "Error while getting all documents");
-                        return new List<MongoDocument>();
-                  }
+                try
+                {
+                    List<MongoDocument> result = await _collection.Find(p => p.IsActive).ToListAsync();
+                    return result.Select(item => new MongoPublicDocument(item) ).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while getting all documents");
+                    return new List<MongoPublicDocument>();
+                }
             }
 
             /// <summary>
-            /// Get document by id
+            /// Get document by Mongo ID
             /// </summary>
             /// <param name="id"></param>
             /// <returns></returns>
-            public async Task<MongoDocument?> GetById(string id)
+            public async Task<MongoDocument?> GetByMongoId(string id)
             {
                   try
                   {
@@ -48,9 +51,28 @@ namespace DiscoData2API.Services
                   }
                   catch (Exception ex)
                   {
-                        _logger.LogError(ex, $"Error while getting document with id {id}");
+                        _logger.LogError(ex, $"Error while getting document with mongo id {id}");
                         return null;
                   }
             }
-      }
+
+            /// <summary>
+            /// Get document by view UUID
+            /// </summary>
+            /// <param name="id"></param>
+            /// <returns></returns>
+            public async Task<MongoDocument?> GetById(string id)
+            {
+                try
+                {
+                    return await _collection.Find(p => p.ID == id).FirstOrDefaultAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error while getting document with UUID {id}");
+                    return null;
+                }
+            }
+
+    }
 }
