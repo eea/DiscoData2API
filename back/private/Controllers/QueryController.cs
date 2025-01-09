@@ -36,9 +36,8 @@ namespace DiscoData2API.Controllers
         /// <response code="201">Returns the newly created query</response>
         /// <response code="400">If the item is null</response>
         [HttpPost("CreateQuery")]
-        public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] CreateViewModel request)
+        public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] MongoBaseDocument request)
         {
-
             try
             {
                 if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
@@ -52,7 +51,7 @@ namespace DiscoData2API.Controllers
                     Id = System.Guid.NewGuid().ToString(),
                     Query = request.Query,
                     Name = request.Name,
-                    UserAdded = request.User,
+                    UserAdded = request.UserAdded,
                     Version = request.Version,
                     Description = request.Description,
                     Fields = extractFieldsFromQuery(request.Query).Result,
@@ -122,7 +121,7 @@ namespace DiscoData2API.Controllers
         /// <param name="userAdded">The username that creatde the query</param>
         /// <returns>Return a list of MongoDocument class</returns>
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery]string? userAdded)
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded)
         {
             if (string.IsNullOrEmpty(userAdded))
             {
@@ -211,7 +210,7 @@ namespace DiscoData2API.Controllers
                         fieldsList.Add(new Field()
                         {
                             Name = column.COLUMN_NAME,
-                            Type = column.COLUMN_NAME == "geometry" || column.COLUMN_NAME=="geom" ? "geometry" :  column.DATA_TYPE,
+                            Type = column.COLUMN_NAME == "geometry" || column.COLUMN_NAME == "geom" ? "geometry" : column.DATA_TYPE,
                             IsNullable = column.IS_NULLABLE == "YES",
                             ColumnSize = column.COLUMN_SIZE.ToString()
                         });
@@ -222,77 +221,17 @@ namespace DiscoData2API.Controllers
 
                 return fieldsList;
             }
-        
- 
+
+
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
 
                 throw; // new Exception("Invalid query");
-                
+
             }
         }
 
-private async Task<List<Field>> extractFields(string? query)
-        {
-            List<Field> fieldsList = new List<Field>();
-
-            try
-            {
-                // Extract all table names from the query
-                List<string> tables = ExtractTableNames(query);
-
-                // Get the columns of each table
-                foreach (var table in tables.Distinct())
-                {
-                    var queryColumns = $"SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table}';";
-                    using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
-                    var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
-                    var columns = JsonSerializer.Deserialize<List<List<DremioColumn>>>(result);
-
-                    if (columns != null)
-                    {
-                        foreach (var column in columns[0])
-                        {
-                            fieldsList.Add(new Field()
-                            {
-                                Name = column.COLUMN_NAME,
-                                Type = column.DATA_TYPE,
-                                IsNullable = column.IS_NULLABLE == "YES",
-                                ColumnSize = column.COLUMN_SIZE.ToString()
-                            });
-                        }
-                    }
-                }
-
-                return fieldsList;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return fieldsList;
-            }
-        }
-        private List<string> ExtractTableNames(string query)
-        {
-            List<string> tableNames = new List<string>();
-
-            // Regular expression to match table names
-            string pattern = @"(?:FROM|JOIN)\s+((?:\""[^\""]+\""|\[[^\]]+\]|\w+)(?:\.(?:\""[^\""]+\""|\[[^\]]+\]|\w+))*)";
-            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-
-            MatchCollection matches = regex.Matches(query);
-            foreach (Match match in matches)
-            {
-                if (match.Groups.Count > 1)
-                {
-                    string tableName = match.Groups[1].Value.LastIndexOf(".") > 0 ? match.Groups[1].Value.Split('.').Last() : match.Groups[1].Value;
-                    tableNames.Add(tableName);
-                }
-            }
-
-            return tableNames;
-        }
 
         #endregion
 
@@ -306,17 +245,34 @@ private async Task<List<Field>> extractFields(string? query)
         /// <param name="limit"></param>
         /// <param name="filters"></param>
         /// <returns></returns>
-        private string UpdateQueryString(string query, string[]? fields, int? limit, string[]? filters)
+        private string UpdateQueryString(string query, string[]? fields, int? limit, List<Dictionary<string, List<object>>>? filters)
         {
             // Update fields returned by query
             fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
             query = query.Replace("*", string.Join(",", fields));
 
             // Add filters to query
-            if (filters != null && filters.Length > 0)
+            if (filters != null && filters.Count > 0)
             {
-                // Concatenate filters directly without additional "AND"
-                string filterClause = string.Join(" ", filters); // Maintain operators and conditions as provided
+                var filterClauses = new List<string>();
+
+                // Build each filter clause using AND
+                foreach (var filter in filters)
+                {
+                    foreach (var kvp in filter)
+                    {
+                        string columnName = kvp.Key;
+                        List<object> values = kvp.Value;
+
+                        // Convert values to SQL-friendly strings
+                        var formattedValues = values.Select(value => value is string ? $"'{value}'" : value.ToString());
+
+                        // Create IN clause for each filter
+                        filterClauses.Add($"{columnName} IN ({string.Join(", ", formattedValues)})");
+                    }
+                }
+
+                string filterClause = string.Join(" AND ", filterClauses);
 
                 // Ensure WHERE clause is correctly placed
                 if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
@@ -337,13 +293,16 @@ private async Task<List<Field>> extractFields(string? query)
             query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             query += $" LIMIT {limit}";
 
+            // Validate the final SQL query
             if (!SQLExtensions.ValidateSQL(query))
             {
                 _logger.LogWarning("SQL query contains unsafe keywords.");
                 throw new Exception("SQL query contains unsafe keywords.");
             }
+
             return query;
         }
+
 
         #endregion
     }

@@ -1,4 +1,3 @@
-using DiscoData2API_Priv.Misc;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using DiscoData2API_Priv.Model;
@@ -74,7 +73,7 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                return await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
+                return await _collection.Find(p => p.Id == id && p.IsActive).FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
@@ -94,7 +93,7 @@ namespace DiscoData2API_Priv.Services
             try
             {
                 // Fetch the existing document
-                var myDocument = await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
+                var myDocument = await _collection.Find(p => p.Id == id && p.IsActive).FirstOrDefaultAsync();
 
                 if (myDocument == null)
                 {
@@ -110,7 +109,7 @@ namespace DiscoData2API_Priv.Services
                 myDocument.Date = newDocument.Date ?? myDocument.Date;
 
                 // Replace the updated document
-                await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
+                await _collection.ReplaceOneAsync(p => p.Id == id, myDocument);
 
                 return myDocument;
             }
@@ -129,7 +128,7 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                var result = await _collection.UpdateOneAsync(p => p._id == id, Builders<MongoDocument>.Update.Set(p => p.IsActive, false));
+                var result = await _collection.UpdateOneAsync(p => p.Id == id, Builders<MongoDocument>.Update.Set(p => p.IsActive, false));
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)

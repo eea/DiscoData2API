@@ -1,11 +1,11 @@
 namespace DiscoData2API.Model
 {
-    public interface MongoBaseDocument
+    public class MongoBaseDocument
     {
-        string _id { get; set; }
-        string Name { get; set; }
-        Boolean IsActive { get; set; }
-        //string Query { get; set; } 
+       public string Name { get; set; }
+        public string Description { get; set; }
+        public string Query { get; set; } 
+        public string? UserAdded { get; set; }
+        public string? Version { get; set; }
     }
-
  }

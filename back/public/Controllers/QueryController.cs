@@ -32,9 +32,14 @@ namespace DiscoData2API.Controllers
         /// <returns>Returns a list of pre-processed views</returns>
         /// 
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog()
+        public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog([FromQuery] string? userAdded)
         {
-            return await  _mongoService.GetAllAsync();
+            if (string.IsNullOrEmpty(userAdded))
+            {
+                return await _mongoService.GetAllAsync();
+            }
+
+            return await _mongoService.GetAllByUserAsync(userAdded);
         }
 
         /// <summary>
@@ -62,7 +67,7 @@ namespace DiscoData2API.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                MongoDocument? mongoDoc = await _mongoService.GetById(id);
+                MongoDocument? mongoDoc = await _mongoService.ReadAsync(id);
 
                 if (mongoDoc == null)
                 {
