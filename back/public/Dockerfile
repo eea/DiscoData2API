@@ -7,22 +7,14 @@ EXPOSE 5205
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy the class library project file
-#COPY ["../classLibrary/DiscoData2API.csproj", "classLibrary/"]
-
 # Copy the project file (relative to the Dockerfile's location in "public")
 COPY ["public/DiscoData2API.csproj", "public/"]
 
 # Restore dependencies
 RUN dotnet restore "public/DiscoData2API.csproj"
 
-# Copy the rest of the class library source files
-#COPY classLibrary/ ./classLibrary/
-
-
 # Copy the rest of the application
 COPY . .
-
 
 # Build the application
 WORKDIR "/src"
