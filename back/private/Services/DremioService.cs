@@ -57,7 +57,7 @@ namespace DiscoData2API_Priv.Services
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(TimeSpan.FromMilliseconds(10),cts);
             }
 
 
@@ -141,7 +141,7 @@ namespace DiscoData2API_Priv.Services
             return new FlightClient(channel);
         }
 
-        private string ConvertRecordBatchToJson(RecordBatch recordBatch)
+        private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
             var data = new List<Dictionary<string, object>>();
 

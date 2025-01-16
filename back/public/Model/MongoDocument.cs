@@ -6,7 +6,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 
 [BsonIgnoreExtraElements]
-public class MongoDocument : MongoBaseDocument
+public class MongoDocument
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

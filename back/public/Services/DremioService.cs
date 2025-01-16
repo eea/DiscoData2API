@@ -40,7 +40,6 @@ namespace DiscoData2API.Services
 
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
-            string jsonResult = string.Empty;
             //            try
             //{
             // Authenticate and obtain token
@@ -58,7 +57,7 @@ namespace DiscoData2API.Services
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(TimeSpan.FromMilliseconds(10),cts);
             }
 
 
@@ -85,7 +84,7 @@ namespace DiscoData2API.Services
                 }
             }
             */
-            allResults.Append("]");
+            allResults.Append(']');
             return allResults.ToString();
 /*
             }
@@ -142,7 +141,7 @@ namespace DiscoData2API.Services
             return new FlightClient(channel);
         }
 
-        private string ConvertRecordBatchToJson(RecordBatch recordBatch)
+        private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
             var data = new List<Dictionary<string, object>>();
 

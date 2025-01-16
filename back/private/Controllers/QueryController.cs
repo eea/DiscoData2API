@@ -10,7 +10,7 @@ using MongoDB.Driver;
 using System.Text;
 using DiscoData2API.Class;
 
-namespace DiscoData2API.Controllers
+namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -36,7 +36,7 @@ namespace DiscoData2API.Controllers
         /// </summary>
         /// <param name="request">The JSON body of the request</param>
         /// <returns>Returns the Json document saved</returns>
-        /// <response code="201">Returns the newly created query</response>
+        /// <response code="200">Returns the newly created query</response>
         /// <response code="400">If the query fires an error in the execution</response>        
         /// <response code="408">If the request times out</response>
         [HttpPost("CreateQuery")]
@@ -58,7 +58,7 @@ namespace DiscoData2API.Controllers
                     UserAdded = request.UserAdded,
                     Version = request.Version,
                     Description = request.Description,
-                    Fields = extractFieldsFromQuery(request.Query).Result,
+                    Fields = ExtractFieldsFromQuery(request.Query).Result,
                     IsActive = true,
                     Date = DateTime.Now
                 });
@@ -115,7 +115,7 @@ namespace DiscoData2API.Controllers
         /// <param name="id">The Id of the query to update</param>
         /// <param name="request"></param>
         /// <returns>Returns the updated MongoDocument</returns>
-        /// <response code="201">Returns the newly updated query</response>
+        /// <response code="200">Returns the newly updated query</response>
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>    
@@ -134,7 +134,7 @@ namespace DiscoData2API.Controllers
                 }
 
                 //we update the fields in case the query changed
-                request.Fields = extractFieldsFromQuery(request.Query).Result;
+                request.Fields = ExtractFieldsFromQuery(request.Query).Result;
 
                 var updatedDocument = await _mongoService.UpdateAsync(id, request);
                 if (updatedDocument == null)
@@ -162,7 +162,16 @@ namespace DiscoData2API.Controllers
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
             }
+            catch (Exception ex)
+            {
+                //show the first line of the error.
+                //Rest of the lines show the query
 
+                _logger.LogError(message: ex.Message);
+                string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
+
+                return StatusCode(StatusCodes.Status400BadRequest, errmsg);
+            }
         }
 
         /// <summary>
@@ -199,7 +208,7 @@ namespace DiscoData2API.Controllers
         /// </summary>
         /// <param name="userAdded">The username that creatde the query</param>
         /// <returns>Return a list of MongoDocument class</returns>
-        /// <response code="201">Returns the catalogue</response>        
+        /// <response code="200">Returns the catalogue</response>        
         /// <response code="408">If the request times out</response>
         [HttpGet("GetCatalog")]
         public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded)
@@ -257,7 +266,7 @@ namespace DiscoData2API.Controllers
                 if (mongoDoc == null)
                 {
                     _logger.LogError($"Query with id {id} not found");
-                    return NotFound();
+                    throw new ViewNotFoundException();
                 }
                 else
                 {
@@ -351,7 +360,7 @@ namespace DiscoData2API.Controllers
 
         #region Extract fields from query
 
-        private async Task<List<Field>> extractFieldsFromQuery(string? query)
+        private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
         {
             List<Field> fieldsList = [];
 
@@ -401,75 +410,5 @@ namespace DiscoData2API.Controllers
 
         #endregion
 
-        #region helper
-
-        /// <summary>
-        /// Update the query string with fields and limit parameters
-        /// </summary>
-        /// <param name="query"></param>
-        /// <param name="fields"></param>
-        /// <param name="limit"></param>
-        /// <param name="filters"></param>
-        /// <returns></returns>
-        private string UpdateQueryString(string query, string[]? fields, int? limit, List<Dictionary<string, List<object>>>? filters)
-        {
-            // Update fields returned by query
-            fields = fields != null && fields.Length > 0 ? fields : new string[] { "*" };
-            query = query.Replace("*", string.Join(",", fields));
-
-            // Add filters to query
-            if (filters != null && filters.Count > 0)
-            {
-                var filterClauses = new List<string>();
-
-                // Build each filter clause using AND
-                foreach (var filter in filters)
-                {
-                    foreach (var kvp in filter)
-                    {
-                        string columnName = kvp.Key;
-                        List<object> values = kvp.Value;
-
-                        // Convert values to SQL-friendly strings
-                        var formattedValues = values.Select(value => value is string ? $"'{value}'" : value.ToString());
-
-                        // Create IN clause for each filter
-                        filterClauses.Add($"{columnName} IN ({string.Join(", ", formattedValues)})");
-                    }
-                }
-
-                string filterClause = string.Join(" AND ", filterClauses);
-
-                // Ensure WHERE clause is correctly placed
-                if (query.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
-                {
-                    query = query.TrimEnd(); // Remove any trailing spaces
-                    query += $" AND {filterClause}";
-                }
-                else
-                {
-                    query += $" WHERE {filterClause}";
-                }
-            }
-
-            // Ensure LIMIT is always at the end
-            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-
-            // Remove any existing LIMIT clause and append a new one
-            //query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            query += $" LIMIT {limit}";
-
-            // Validate the final SQL query
-            if (!SQLExtensions.ValidateSQL(query))
-            {
-                _logger.LogWarning("SQL query contains unsafe keywords.");
-                throw new Exception("SQL query contains unsafe keywords.");
-            }
-
-            return query;
-        }
-
-
-        #endregion
     }
 }
