@@ -22,7 +22,7 @@ public class MongoDocument : MongoBaseDocument
 
     [BsonElement("description")]
     public string Description { get; set; } = null!;
-        
+
 
     [BsonElement("isActive")]
     public Boolean IsActive { get; set; }
@@ -49,7 +49,7 @@ public class MongoPublicDocument
 
     public string Description { get; set; } = null!;
 
-    public Boolean IsActive { get; set; }= false;
+    public Boolean IsActive { get; set; } = false;
 
     public string? Version { get; set; } = null;
 
@@ -63,17 +63,18 @@ public class MongoPublicDocument
     {
     }
 
-    public MongoPublicDocument(MongoDocument doc) {
+    public MongoPublicDocument(MongoDocument doc)
+    {
         ID = doc.ID;
         Name = doc.Name;
         Description = doc.Description;
         IsActive = doc.IsActive;
         Version = doc.Version;
-        Date = doc.Date;    
+        Date = doc.Date;
         Query = doc.Query;
         Fields = doc.Fields;
     }
-            
+
 
 }
 
