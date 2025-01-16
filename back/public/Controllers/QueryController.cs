@@ -71,7 +71,11 @@ namespace DiscoData2API.Controllers
         ///     POST /api/query/672b84ef75e2d0b792658f24
         ///     {
         ///     "fields": ["column1", "column2"],
-        ///     "filters": ["column1 = 'value1'", "column2 = 'value2'"],
+        ///     "filters": [
+        ///         {"Concat": "AND", "FieldName":"Column4" ,"Condition":"=", "Values": ["'Value1'"]  } ,
+        ///         {"Concat": "OR", "FieldName":"Column1" ,"Condition":"IN", "Values": ["'Value4'","'Value1'"]  }
+        ///         ...
+        ///     ],
         ///     "limit": 100,
         ///     }
         ///         
