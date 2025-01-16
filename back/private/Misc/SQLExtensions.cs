@@ -96,7 +96,7 @@ namespace DiscoData2API_Priv.Misc
             }
 
             //Remove the values between the delimiters from the SQL so that subsequent steps can look for illegal keywords
-            sqlWithStringsRemoved = sqlWithStringsRemoved.Substring(0, firstOccurrenceOfDelimiter) + sqlWithStringsRemoved.Substring(secondOccurrenceOfDelimiter + delimiter.Length);
+            sqlWithStringsRemoved = string.Concat(sqlWithStringsRemoved.AsSpan(0, firstOccurrenceOfDelimiter), sqlWithStringsRemoved.AsSpan(secondOccurrenceOfDelimiter + delimiter.Length));
             firstOccurrenceOfDelimiter = sqlWithStringsRemoved.IndexOf(delimiter);
             if (firstOccurrenceOfDelimiter >= 0) //If there is another string, we need to remove that one too
                 return ExtractStringsFromSQL(sqlWithStringsRemoved, delimiter);
@@ -119,18 +119,18 @@ namespace DiscoData2API_Priv.Misc
                     int commentEnd = sql.IndexOf(commentEndTag);
                     if (commentEnd >= 0)
                     {
-                        sql = sql.Substring(0, commentStart) + sql.Substring(commentEnd + commentEndTag.Length);
+                        sql = string.Concat(sql.AsSpan(0, commentStart), sql.AsSpan(commentEnd + commentEndTag.Length));
                     }
                     else
                     {
                         stopParsingSQL = true;  //Begin comment found but no end comment found
-                        sql = sql.Substring(0, commentStart);
+                        sql = sql[..commentStart];
                     }
                 }
                 else
                 {
                     stopParsingSQL = true;
-                    sql = sql.Substring(0, commentStart);
+                    sql = sql[..commentStart];
                 }
             }
             #region NEW SYNTAX OPTION BIT 2 of 3

@@ -84,7 +84,7 @@ namespace DiscoData2API_Priv.Services
                 }
             }
             */
-            allResults.Append("]");
+            allResults.Append(']');
             return allResults.ToString();
             /*
                         }

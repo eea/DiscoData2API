@@ -14,22 +14,10 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class QueryController : ControllerBase
+    public class QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
     {
-        private readonly ILogger<QueryController> _logger;
-        private readonly MongoService _mongoService;
-        private readonly DremioService _dremioService;
-        private readonly int _defaultLimit;
-        private readonly int _timeout;
-
-        public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
-        {
-            _logger = logger;
-            _mongoService = mongoService;
-            _dremioService = dremioService;
-            _defaultLimit = dremioService._limit;
-            _timeout = dremioService._timeout;
-        }
+        private readonly int _defaultLimit = dremioService._limit;
+        private readonly int _timeout = dremioService._timeout;
 
         /// <summary>
         /// Create a view (MongoDB)
@@ -46,11 +34,11 @@ namespace DiscoData2API_Priv.Controllers
             {
                 if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
                 {
-                    _logger.LogWarning("SQL query contains unsafe keywords.");
+                    logger.LogWarning("SQL query contains unsafe keywords.");
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
-                return await _mongoService.CreateAsync(new MongoDocument()
+                return await mongoService.CreateAsync(new MongoDocument()
                 {
                     ID = System.Guid.NewGuid().ToString(),
                     Query = request.Query,
@@ -65,17 +53,17 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (SQLFormattingException ex)
             {
-                _logger.LogError(ex.Message);
+                logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
             }
             catch (Exception ex) {
-                _logger.LogError(ex.Message);
+                logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
             }
         }
@@ -93,16 +81,16 @@ namespace DiscoData2API_Priv.Controllers
         {            
             try
             {
-                return await _mongoService.ReadAsync(id);
+                return await mongoService.ReadAsync(id);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (ViewNotFoundException)
             {
-                _logger.LogError(string.Format("Cannot retrieve view with id {0}", id));
+                logger.LogError(string.Format("Cannot retrieve view with id {0}", id));
                 return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
 
             }
@@ -125,21 +113,21 @@ namespace DiscoData2API_Priv.Controllers
         {
             try
             {
-                var doc =await _mongoService.ReadAsync(id);
+                var doc =await mongoService.ReadAsync(id);
 
                 if (request.Query == null || !SQLExtensions.ValidateSQL(request.Query))
                 {
-                    _logger.LogWarning("SQL query contains unsafe keywords.");
+                    logger.LogWarning("SQL query contains unsafe keywords.");
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
                 //we update the fields in case the query changed
                 request.Fields = ExtractFieldsFromQuery(request.Query).Result;
 
-                var updatedDocument = await _mongoService.UpdateAsync(id, request);
+                var updatedDocument = await mongoService.UpdateAsync(id, request);
                 if (updatedDocument == null)
                 {
-                    _logger.LogWarning($"Document with id {id} could not be updated.");
+                    logger.LogWarning($"Document with id {id} could not be updated.");
                     return NotFound($"Document with id {id} not found.");
                 }
 
@@ -148,7 +136,7 @@ namespace DiscoData2API_Priv.Controllers
 
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (ViewNotFoundException)
@@ -158,7 +146,7 @@ namespace DiscoData2API_Priv.Controllers
 
             catch (SQLFormattingException ex)
             {
-                _logger.LogError(ex.Message);
+                logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
             }
@@ -167,7 +155,7 @@ namespace DiscoData2API_Priv.Controllers
                 //show the first line of the error.
                 //Rest of the lines show the query
 
-                _logger.LogError(message: ex.Message);
+                logger.LogError(message: ex.Message);
                 string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
 
                 return StatusCode(StatusCodes.Status400BadRequest, errmsg);
@@ -187,17 +175,17 @@ namespace DiscoData2API_Priv.Controllers
         {
             try
             {
-                var doc = await _mongoService.ReadAsync(id);
-                return await _mongoService.DeleteAsync(id);
+                var doc = await mongoService.ReadAsync(id);
+                return await mongoService.DeleteAsync(id);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (ViewNotFoundException)
             {
-                _logger.LogError(string.Format("Cannot retrieve view with id {0}", id));
+                logger.LogError(string.Format("Cannot retrieve view with id {0}", id));
                 return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
 
             }
@@ -217,14 +205,14 @@ namespace DiscoData2API_Priv.Controllers
             {
                 if (string.IsNullOrEmpty(userAdded))
                 {
-                    return await _mongoService.GetAllAsync();
+                    return await mongoService.GetAllAsync();
                 }
 
-                return await _mongoService.GetAllByUserAsync(userAdded);
+                return await mongoService.GetAllByUserAsync(userAdded);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
 
@@ -261,24 +249,24 @@ namespace DiscoData2API_Priv.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                MongoDocument? mongoDoc = await _mongoService.GetFullDocumentById(id);
+                MongoDocument? mongoDoc = await mongoService.GetFullDocumentById(id);
 
                 if (mongoDoc == null)
                 {
-                    _logger.LogError($"Query with id {id} not found");
+                    logger.LogError($"Query with id {id} not found");
                     throw new ViewNotFoundException();
                 }
                 else
                 {
                     mongoDoc.Query = UpdateQueryString(mongoDoc.Query, request.Fields, request.Limit, request.Filters);
                 }
-                var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
+                var result = await dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
 
                 return result;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Task was canceled due to timeout.");
+                logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (ViewNotFoundException)
@@ -287,7 +275,7 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (SQLFormattingException ex)
             {
-                _logger.LogError(ex.Message);
+                logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
             }
@@ -298,7 +286,7 @@ namespace DiscoData2API_Priv.Controllers
                 //Rest of the lines show the query
 
 
-                _logger.LogError(message: ex.Message);
+                logger.LogError(message: ex.Message);
                 string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
                 /*
                 if (errmsg != null)
@@ -350,7 +338,7 @@ namespace DiscoData2API_Priv.Controllers
 
             if (!SQLExtensions.ValidateSQL(full_query))
             {
-                _logger.LogWarning("SQL query contains unsafe keywords.");
+                logger.LogWarning("SQL query contains unsafe keywords.");
                 throw new SQLFormattingException("SQL query contains unsafe keywords.");
             }
             return full_query;
@@ -370,11 +358,11 @@ namespace DiscoData2API_Priv.Controllers
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
                 var queryColumns = string.Format(@" CREATE TABLE if not exists {0} AS
                             select * from ({1} ) limit 1;", temp_table_name, query);
-                var result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
+                var result = await dremioService.ExecuteQuery(queryColumns, cts.Token);
 
 
                 queryColumns = $"describe table {temp_table_name}";
-                result = await _dremioService.ExecuteQuery(queryColumns, cts.Token);
+                result = await dremioService.ExecuteQuery(queryColumns, cts.Token);
 
                 var columns = JsonSerializer.Deserialize<List<DremioColumn>>(result);
 
@@ -392,7 +380,7 @@ namespace DiscoData2API_Priv.Controllers
                     }
                 }
 
-                result = await _dremioService.ExecuteQuery(string.Format("DROP TABLE {0}", temp_table_name), cts.Token);
+                result = await dremioService.ExecuteQuery(string.Format("DROP TABLE {0}", temp_table_name), cts.Token);
 
                 return fieldsList;
             }
@@ -400,7 +388,7 @@ namespace DiscoData2API_Priv.Controllers
 
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                logger.LogError(ex.Message);
 
                 throw; // new Exception("Invalid query");
 
