@@ -26,7 +26,8 @@ out/
 *.code-workspace
 *.sln.cache
 .vscode/settings.json
-.vs/
+.vs
+**/*.vsidx
 
 # Configuration Files
 appsettings*.json     # Local or development settings files with sensitive info

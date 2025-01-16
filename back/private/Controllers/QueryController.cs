@@ -62,7 +62,7 @@ namespace DiscoData2API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("Invalid query");
+                return BadRequest("Invalid query. Please make sure your query is correct");
             }
         }
 

@@ -49,15 +49,19 @@ public class MongoPublicDocument
 
     public string Description { get; set; } = null!;
 
-    public Boolean IsActive { get; set; }
+    public Boolean IsActive { get; set; }= false;
 
-    public string? Version { get; set; }
+    public string? Version { get; set; } = null;
 
-    public DateTime? Date { get; set; }
+    public DateTime? Date { get; set; } = null;
 
     private string Query { get; set; } = null!;
 
     public List<Field>? Fields { get; set; } = null!;
+
+    public MongoPublicDocument()
+    {
+    }
 
     public MongoPublicDocument(MongoDocument doc) {
         ID = doc.ID;
