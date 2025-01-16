@@ -71,6 +71,7 @@ project.fragment.lock.json
 *.swp                   # Swap files (e.g., for Vim)
 *.bak                   # Backup files
 *.orig                  # Backup files for merged conflicts
+**/*.vsidx
 
 # Resharper
 .ReSharper/

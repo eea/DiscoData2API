@@ -29,7 +29,7 @@ namespace DiscoData2API.Services
             try
             {
                 List<MongoDocument> result = await _collection.Find(p => p.IsActive).ToListAsync();
-                return result.Select(item => new MongoPublicDocument(item)).ToList();
+                return result.Select(item => new MongoPublicDocument(item) ).ToList();
             }
             catch (Exception ex)
             {
@@ -38,37 +38,46 @@ namespace DiscoData2API.Services
             }
         }
 
-        public async Task<List<MongoPublicDocument>> GetAllByUserAsync(string userAdded)
-        {
-            try
-            {
-                List<MongoDocument> result = await _collection.Find(p => p.IsActive && p.UserAdded == userAdded).ToListAsync();
-                return result.Select(item => new MongoPublicDocument(item)).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while getting documents for a specific user");
-                return new List<MongoPublicDocument>();
-            }
-        }
-
         /// <summary>
-        /// Get document by view UUID
+        /// Get document by view UUID 
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public async Task<MongoDocument?> ReadAsync(string id)
+        public async Task<MongoPublicDocument> GetById(string id)
         {
             try
             {
-                return await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
+
+                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID==id).FirstAsync();
+                return new MongoPublicDocument(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error while getting document with UUID {id}");
+                _logger.LogError(ex, $"Error while getting document with mongo id {id}");
+                return new MongoPublicDocument();
+            }
+        }
+
+
+        /// <summary>
+        /// Get document by view UUID with all fields
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<MongoDocument?> GetFullDocumentById(string id)
+        {
+            try
+            {
+                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstAsync();                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error while getting document with mongo id {id}");
                 return null;
             }
         }
+
 
     }
 }

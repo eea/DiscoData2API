@@ -8,6 +8,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using DiscoData2API.Class;
 
+
 namespace DiscoData2API.Services
 {
     public class DremioService
@@ -16,11 +17,13 @@ namespace DiscoData2API.Services
         private readonly string? _username;
         private readonly string? _password;
         private readonly string? _dremioServer;
-        private string? _dremioServerAuth;
-        private FlightClient _flightClient;
+        private readonly string? _dremioServerAuth;
+        private readonly FlightClient _flightClient;
         public readonly int _limit;
         public readonly int _timeout;
         private readonly HttpClient _httpClient;
+
+        private int count = 0;
 
         public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger, IHttpClientFactory httpClientFactory)
         {
@@ -33,52 +36,75 @@ namespace DiscoData2API.Services
             _timeout = dremioSettings.Value.Timeout;
             _httpClient = httpClientFactory.CreateClient();
             _flightClient = InitializeFlightClient();
+            
         }
 
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
             string jsonResult = string.Empty;
-            try
-            {
+            //            try
+            //{
+            count = 0;
                 // Authenticate and obtain token
                 var token = await Authenticate();
                 var headers = new Metadata { { "authorization", $"Bearer {token}" } };
 
                 // Prepare the FlightDescriptor for the query
                 var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-
                 // Fetch FlightInfo for the query
                 var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
-                
+
+
                 var allResults = new List<string>();
-                // Iterate over the returned tickets from FlightInfo
-                foreach (var endpoint in flightInfo.Endpoints)
+                await foreach (var batch in StreamRecordBatches(flightInfo,headers))
                 {
-                    // Each endpoint provides a ticket for data retrieval
-                    var ticket = endpoint.Ticket;
-
-                    // Open a stream for the ticket
-                    using var stream = _flightClient.GetStream(ticket, headers);
-
-                    // Process stream of Arrow RecordBatches
-                    while (await stream.ResponseStream.MoveNext(cts))
-                    {
-                        var current = await Task.Run(() =>
-                        {
-                            var data = stream.ResponseStream.Current;
-                            return data;
-                        }, cts);
-                        allResults.Add(await Task.Run(() => ConvertRecordBatchToJson(current), cts));
-                    }
+                    Console.WriteLine($"Read batch from flight server: \n {batch}");
+                    count = count + batch.Length;
+                    //allResults.Add(ConvertRecordBatchToJson(batch));
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
                 }
 
-               return $"[{string.Join(",", allResults)}]";
+
+            /*
+
+            // Iterate over the returned tickets from FlightInfo
+            foreach (var endpoint in flightInfo.Endpoints)
+            {
+                // Each endpoint provides a ticket for data retrieval
+                var ticket = endpoint.Ticket;
+
+                // Open a stream for the ticket
+                using var stream = _flightClient.GetStream(ticket, headers);
+
+                // Process stream of Arrow RecordBatches
+                while (await stream.ResponseStream.MoveNext(cts))
+                {
+                    var current = await Task.Run(() =>
+                    {
+                        var data = stream.ResponseStream.Current;
+                        return data;
+                    }, cts);
+                    allResults.Add(await Task.Run(() => ConvertRecordBatchToJson(current), cts));
+                }
+            }
+            */
+
+
+            return string.Format(@"[{{{0}}}]", count);  // $"[{string.Join(",", allResults)}]";
+/*
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while executing query via Arrow Flight.");
                 throw;
             }
+            finally
+            {
+                // Send clear command to drop all data from the server.
+                var clear_result = _flightClient.DoAction(new FlightAction("clear"));
+                await clear_result.ResponseStream.MoveNext(default);
+            }
+*/
         }
 
         public async Task<DremioLogin?> ApiLogin()
@@ -128,48 +154,55 @@ namespace DiscoData2API.Services
             for (int i = 0; i < recordBatch.Length; i++)
             {
                 var rowData = new Dictionary<string, object>();
-
-                // For each row, iterate over columns
-                foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
+                try
                 {
-                    string columnName = column.field.Name;
-
-                    switch (column.array)
+                    // For each row, iterate over columns
+                    foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
-                        case Int32Array int32Array:
-                            rowData[columnName] = int32Array.Values[i];
-                            break;
-                        case Int64Array int64Array:
-                            rowData[columnName] = int64Array.Values[i];
-                            break;
-                        case DoubleArray doubleArray:
-                            rowData[columnName] = doubleArray.Values[i];
-                            break;
-                        case Decimal128Array decimal128Array:
+                        string columnName = column.field.Name;
+
+                        switch (column.array)
+                        {
+                            case Int32Array int32Array:
+                                rowData[columnName] = int32Array.Values[i];
+                                break;
+                            case Int64Array int64Array:
+                                rowData[columnName] = int64Array.Values[i];
+                                break;
+                            case DoubleArray doubleArray:
+                                rowData[columnName] = doubleArray.Values[i];
+                                break;
+                            case Decimal128Array decimal128Array:
 #pragma warning disable CS8601 // Posible asignaci�n de referencia nula
-                            rowData[columnName] = decimal128Array.GetValue(i);
+                                rowData[columnName] = decimal128Array.GetValue(i);
 #pragma warning restore CS8601 // Posible asignaci�n de referencia nula
-                            break;
-                        case StringArray stringArray:
-                            rowData[columnName] = stringArray.GetString(i);
-                            break;
-                        case Date64Array date64Array:
-                            rowData[columnName] = date64Array.Values[i];
-                            break;
-                        case Date32Array date32Array:
-                            rowData[columnName] = date32Array.Values[i];
-                            break;
-                        // Add cases for other array types as needed
-                        default:
-                            rowData[columnName] = "Unsupported array type";
-                            break;
+                                break;
+                            case StringArray stringArray:
+                                rowData[columnName] = stringArray.GetString(i);
+                                break;
+                            case Date64Array date64Array:
+                                rowData[columnName] = date64Array.Values[i];
+                                break;
+                            case Date32Array date32Array:
+                                rowData[columnName] = date32Array.Values[i];
+                                break;
+                            // Add cases for other array types as needed
+                            default:
+                                rowData[columnName] = "Unsupported array type";
+                                break;
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    var  a = 2;
                 }
 
                 data.Add(rowData);
             }
+            count = count + data.Count;
 
-            return JsonSerializer.Serialize(data);
+            return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
         }
 
         private async Task<string> Authenticate()
@@ -205,5 +238,24 @@ namespace DiscoData2API.Services
         }
 
         #endregion
+
+        public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers )
+        {
+            // There might be multiple endpoints hosting part of the data. In simple services,
+            // the only endpoint might be the same server we initially queried.
+            foreach (var endpoint in info.Endpoints)
+            {
+                // We may have multiple locations to choose from. Here we choose the first.
+                //var download_channel = GrpcChannel.ForAddress(endpoint.Locations.First().Uri);
+                //var download_client = new FlightClient(download_channel);
+
+                var stream = _flightClient.GetStream(endpoint.Ticket, headers);
+
+                while (await stream.ResponseStream.MoveNext())
+                {
+                    yield return stream.ResponseStream.Current;
+                }
+            }
+        }
     }
 }

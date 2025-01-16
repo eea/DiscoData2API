@@ -29,7 +29,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "DiscoData API (Public)",
         Version = "v1",
-        Description = @"Public API for Querying S3 Parquets via Dremio,<br>
+        Description = @"Public API for Querying DataHub DiscoData,<br>
         This API allows you to retrieve a catalog of available SQL-based queries. <br>
         To fetch data, use the unique identifier associated with a specific query.",
     });
