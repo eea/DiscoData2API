@@ -11,22 +11,13 @@ namespace DiscoData2API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class QueryController : ControllerBase
+    public class QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
     {
-        private readonly ILogger<QueryController> _logger;
-        private readonly MongoService _mongoService;
-        private readonly DremioService _dremioService;
-        private readonly int _defaultLimit;
-        private readonly int _timeout;
-
-        public QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService)
-        {
-            _logger = logger;
-            _mongoService = mongoService;
-            _dremioService = dremioService;
-            _defaultLimit = dremioService._limit;
-            _timeout = dremioService._timeout;
-        }
+        private readonly ILogger<QueryController> _logger = logger;
+        private readonly MongoService _mongoService = mongoService;
+        private readonly DremioService _dremioService = dremioService;
+        private readonly int _defaultLimit = dremioService._limit;
+        private readonly int _timeout = dremioService._timeout;
 
         /// <summary>
         /// Get catalog of pre-processed views
@@ -44,47 +35,42 @@ namespace DiscoData2API.Controllers
         /// <summary>
         /// Get a view by ID
         /// </summary>
+        /// <param name="id">The query ID</param>
         /// <returns>Returns a view</returns>
         /// <response code="200">Returns view</response>
-        /// <response code="400">If the view does not exist in the catalogue</response>
+        /// <response code="404">If the view does not exist</response>
+        /// <response code="408">If the request times out</response>
         [HttpGet("Get/{id}")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:La plantilla debe ser una expresión estática", Justification = "<pendiente>")]
         public async Task<ActionResult<MongoPublicDocument>> GetById(string id)
         {
             try
             {
                 return await _mongoService.GetById(id);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                _logger.LogError(ex.Message);
-                return StatusCode(StatusCodes.Status400BadRequest,string.Format("Cannot retrieve view with id {0}",id) );
+                _logger.LogError("Task was canceled due to timeout.");
+                return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
+            }
+            catch (ViewNotFoundException)
+            {
+                _logger.LogError(string.Format("Cannot retrieve view with id {0}", id));
+                return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
+
             }
         }
 
         /// <summary>
-        /// Executes a query and returns a JSON with the results
+        /// Update a query (MongoDB)
         /// </summary>
-        /// <param name="id">The query ID</param>
-        /// <param name="request">The JSON body of the request</param>
-        /// <returns></returns>
-        /// <remarks>
-        /// Sample request:
-        /// 
-        ///     POST /api/query/672b84ef75e2d0b792658f24
-        ///     {
-        ///     "fields": ["column1", "column2"],
-        ///     "filters": [
-        ///         {"Concat": "AND", "FieldName":"Column4" ,"Condition":"=", "Values": ["'Value1'"]  } ,
-        ///         {"Concat": "OR", "FieldName":"Column1" ,"Condition":"IN", "Values": ["'Value4'","'Value1'"]  }
-        ///         ...
-        ///     ],
-        ///     "limit": 100,
-        ///     }
-        ///         
-        /// </remarks>
-        /// <response code="201">Returns the newly created item</response>
+        /// <param name="id">The Id of the query to update</param>
+        /// <param name="request"></param>
+        /// <returns>Returns the updated MongoDocument</returns>
+        /// <response code="200">Returns the newly updated query</response>
         /// <response code="400">If the query fires an error in the execution</response>
-        /// <response code="408">If the request times out</response>
+        /// <response code="404">If the view does not exist</response>
+        /// <response code="408">If the request times out</response>    
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
@@ -96,7 +82,7 @@ namespace DiscoData2API.Controllers
                 if (mongoDoc == null)
                 {
                     _logger.LogError($"Query with id {id} not found");
-                    return NotFound();
+                    throw new ViewNotFoundException();
                 }
                 else
                 {
@@ -111,6 +97,11 @@ namespace DiscoData2API.Controllers
                 _logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
+            catch (ViewNotFoundException)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
+            }
+
             catch (SQLFormattingException ex)
             {
                 _logger.LogError(ex.Message);
@@ -161,9 +152,6 @@ namespace DiscoData2API.Controllers
 
             // Ensure LIMIT is always at the end
             limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-
-            // Remove any existing LIMIT clause and append a new one
-            query = System.Text.RegularExpressions.Regex.Replace(query, @"LIMIT\s+\d+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             string full_query;
             if (string.IsNullOrEmpty(filter_query))

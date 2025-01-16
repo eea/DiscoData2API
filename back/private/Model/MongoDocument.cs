@@ -11,7 +11,7 @@ namespace DiscoData2API_Priv.Model
         public string _id { get; set; } = null!;
 
         [BsonElement("id")]
-        public string Id { get; set; } = null!;
+        public string ID { get; set; } = null!;
 
         [BsonElement("name")]
         public string Name { get; set; } = null!;
@@ -52,6 +52,7 @@ namespace DiscoData2API_Priv.Model
             set
             {
                 _type = "string";
+#pragma warning disable IDE0066 // Convertir una instrucción switch en expresión
                 switch (value)
                 {
                     case "CHARACTER":
@@ -82,6 +83,7 @@ namespace DiscoData2API_Priv.Model
                         _type = value.ToLower();
                         break;
                 }
+#pragma warning restore IDE0066 // Convertir una instrucción switch en expresión
             }
         }
 

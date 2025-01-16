@@ -9,4 +9,12 @@ namespace DiscoData2API.Misc
 
         public SQLFormattingException(string message) : base(message) { }
     }
+
+    [Serializable]
+    public class ViewNotFoundException : Exception
+    {
+        public ViewNotFoundException() { }
+
+        public ViewNotFoundException(string message) : base(message) { }
+    }
 }
