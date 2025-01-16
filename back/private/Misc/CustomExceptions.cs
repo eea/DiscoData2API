@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SampleSQLInjectionDetectionApp
+namespace DiscoData2API_Priv.Misc
 {
 	[Serializable]
 	public class SQLFormattingException : Exception
@@ -9,4 +9,14 @@ namespace SampleSQLInjectionDetectionApp
 
 		public SQLFormattingException(string message): base(message) {}
 	}
+
+
+    [Serializable]
+    public class ViewNotFoundException : Exception
+    {
+        public ViewNotFoundException() { }
+
+        public ViewNotFoundException(string message) : base(message) { }
+    }
+
 }

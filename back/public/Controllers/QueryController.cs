@@ -44,6 +44,7 @@ namespace DiscoData2API.Controllers
         /// <summary>
         /// Get a view by ID
         /// </summary>
+        /// <param name="id">The query ID</param>
         /// <returns>Returns a view</returns>
         /// <response code="200">Returns view</response>
         /// <response code="400">If the view does not exist in the catalogue</response>

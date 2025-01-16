@@ -2,8 +2,8 @@
 using System.Data;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using SampleSQLInjectionDetectionApp;
 using System.Data.SqlClient;
+using DiscoData2API_Priv.Misc;
 
 public static class SQLExtensions
 {
@@ -22,11 +22,11 @@ public static class SQLExtensions
 			valid = ReallyValidateSQL(sql, keywordRegex);
 		}
 		//TODO - Do you want to catch the exception here or not?
-		catch (SQLFormattingException ex)
+		catch 
 		{
 			valid = false;
 			//TODO - Log the exception?
-			var x = ex.Message;
+			throw;
 		}
 		return valid;
 	}
@@ -145,7 +145,7 @@ public static class SQLExtensions
 	private static void LoadFromConfig()
 	{
 		_asciiPattern = "[^\u0000-\u007F]";
-		_selectpattern = @"\b(union|information_schema|insert|update|delete|truncate|drop|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
+		_selectpattern = @"\b(union|information_schema|insert|update|delete|truncate|drop|alter|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
 		_modifypattern = @"\b(union|information_schema|truncate|drop|reconfigure|sysobjects|waitfor|xp_cmdshell)\b|(;)";
 		_rejectIfCommentFound = true;
 		_commentTagSets = new string[2, 2] { { "--", "" }, { "/*", "*/" } };

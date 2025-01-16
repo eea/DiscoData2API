@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using DiscoData2API_Priv.Model;
 using DiscoData2API_Priv.Class;
+using DiscoData2API_Priv.Misc;
 
 namespace DiscoData2API_Priv.Services
 {
@@ -27,10 +28,9 @@ namespace DiscoData2API_Priv.Services
             {
                 return await _collection.Find(p => p.IsActive).ToListAsync();
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error while getting all documents");
-                return new List<MongoDocument>();
+                throw;
             }
         }
 
@@ -40,10 +40,9 @@ namespace DiscoData2API_Priv.Services
             {
                 return await _collection.Find(p => p.IsActive && p.UserAdded == userAdded).ToListAsync();
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error while getting documents for a specific user");
-                return new List<MongoDocument>();
+                throw;
             }
         }
 
@@ -73,12 +72,15 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                return await _collection.Find(p => p.Id == id && p.IsActive).FirstOrDefaultAsync();
+                MongoDocument doc= await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                if (doc!=null) return doc;
+                throw new ViewNotFoundException();
+
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error while getting document with id {id}");
-                return null;
+                throw;
             }
         }
 
@@ -93,7 +95,7 @@ namespace DiscoData2API_Priv.Services
             try
             {
                 // Fetch the existing document
-                var myDocument = await _collection.Find(p => p.Id == id && p.IsActive).FirstOrDefaultAsync();
+                var myDocument = await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
 
                 if (myDocument == null)
                 {
@@ -109,7 +111,7 @@ namespace DiscoData2API_Priv.Services
                 myDocument.Date = newDocument.Date ?? myDocument.Date;
 
                 // Replace the updated document
-                await _collection.ReplaceOneAsync(p => p.Id == id, myDocument);
+                await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
 
                 return myDocument;
             }
@@ -128,14 +130,44 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                var result = await _collection.UpdateOneAsync(p => p.Id == id, Builders<MongoDocument>.Update.Set(p => p.IsActive, false));
-                return result.ModifiedCount > 0;
+                var doc= await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                if (doc != null)
+                {
+                    var result = await _collection.UpdateOneAsync(p => p.ID == id, Builders<MongoDocument>.Update.Set(p => p.IsActive, false));
+
+                    return result.ModifiedCount > 0;
+                }
+                return false;
             }
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error while deleting document with id {id}");
-                return false;
+                throw;
             }
         }
+
+        /// <summary>
+        /// Get document by view UUID with all fields
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<MongoDocument?> GetFullDocumentById(string id)
+        {
+            try
+            {
+                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstOrDefaultAsync();
+                if (result != null) return result;
+                throw new ViewNotFoundException();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error while getting document with mongo id {id}");
+                throw;
+            }
+        }
+
+
     }
+
 }
