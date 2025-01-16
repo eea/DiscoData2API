@@ -32,6 +32,7 @@ namespace DiscoData2API.Controllers
         /// Get catalog of pre-processed views
         /// </summary>
         /// <returns>Returns a list of pre-processed views</returns>
+        /// <response code="200">Returns a list of active views</response>
         /// 
         [HttpGet("GetCatalog")]
         public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog()
@@ -44,7 +45,8 @@ namespace DiscoData2API.Controllers
         /// Get a view by ID
         /// </summary>
         /// <returns>Returns a view</returns>
-        /// 
+        /// <response code="200">Returns view</response>
+        /// <response code="400">If the view does not exist in the catalogue</response>
         [HttpGet("Get/{id}")]
         public async Task<ActionResult<MongoPublicDocument>> GetById(string id)
         {
@@ -81,7 +83,7 @@ namespace DiscoData2API.Controllers
         ///         
         /// </remarks>
         /// <response code="201">Returns the newly created item</response>
-        /// <response code="400">If the item is null</response>
+        /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="408">If the request times out</response>
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
