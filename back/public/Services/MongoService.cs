@@ -29,7 +29,7 @@ namespace DiscoData2API.Services
             try
             {
                 List<MongoDocument> result = await _collection.Find(p => p.IsActive).ToListAsync();
-                return result.Select(item => new MongoPublicDocument(item) ).ToList();
+                return result.Select(item => new MongoPublicDocument(item)).ToList();
             }
             catch (Exception ex)
             {
@@ -48,13 +48,13 @@ namespace DiscoData2API.Services
             try
             {
 
-                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID==id).FirstAsync();
+                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstAsync();
                 return new MongoPublicDocument(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error while getting document with mongo id {id}");
-                return new MongoPublicDocument();
+                throw;
             }
         }
 
@@ -68,7 +68,7 @@ namespace DiscoData2API.Services
         {
             try
             {
-                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstAsync();                
+                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstAsync();
                 return result;
             }
             catch (Exception ex)

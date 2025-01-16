@@ -34,14 +34,9 @@ namespace DiscoData2API.Controllers
         /// <returns>Returns a list of pre-processed views</returns>
         /// 
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog([FromQuery] string? userAdded)
+        public async Task<ActionResult<List<MongoPublicDocument>>> GetMongoCatalog()
         {
-            if (string.IsNullOrEmpty(userAdded))
-            {
-                return await _mongoService.GetAllAsync();
-            }
-
-            return await _mongoService.GetAllByUserAsync(userAdded);
+            return await _mongoService.GetAllAsync();
         }
 
 
@@ -53,9 +48,16 @@ namespace DiscoData2API.Controllers
         [HttpGet("Get/{id}")]
         public async Task<ActionResult<MongoPublicDocument>> GetById(string id)
         {
-            return await _mongoService.GetById(id);
+            try
+            {
+                return await _mongoService.GetById(id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return StatusCode(StatusCodes.Status400BadRequest,string.Format("Cannot retrieve view with id {0}",id) );
+            }
         }
-
 
         /// <summary>
         /// Executes a query and returns a JSON with the results
@@ -83,7 +85,6 @@ namespace DiscoData2API.Controllers
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-
                 MongoDocument? mongoDoc = await _mongoService.GetFullDocumentById(id);
 
                 if (mongoDoc == null)
@@ -115,10 +116,10 @@ namespace DiscoData2API.Controllers
             {
                 //show the first line of the error.
                 //Rest of the lines show the query
-                
+
 
                 _logger.LogError(message: ex.Message);
-                string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail; 
+                string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
                 if (errmsg != null)
 #pragma warning disable CS8600 // Se va a convertir un literal nulo o un posible valor nulo en un tipo que no acepta valores NULL
                     errmsg = errmsg.Split(['\r', '\n'])
@@ -144,13 +145,13 @@ namespace DiscoData2API.Controllers
             StringBuilder _filter_query = new();
             if (filters != null && filters.Length > 0)
             {
-                filter_query = string.Join(" ", filters.Select(a=> a.BuildFilterString())) ;
+                filter_query = string.Join(" ", filters.Select(a => a.BuildFilterString()));
                 foreach (var filter in filters)
                 {
-                    _filter_query.AppendFormat(" {0} ", filter.BuildFilterString() );
+                    _filter_query.AppendFormat(" {0} ", filter.BuildFilterString());
                 }
             }
-            
+
 
             // Ensure LIMIT is always at the end
             limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
