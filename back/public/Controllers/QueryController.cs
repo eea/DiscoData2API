@@ -62,15 +62,30 @@ namespace DiscoData2API.Controllers
         }
 
         /// <summary>
-        /// Update a query (MongoDB)
+        /// Executes a query and returns a JSON with the results
         /// </summary>
-        /// <param name="id">The Id of the query to update</param>
-        /// <param name="request"></param>
-        /// <returns>Returns the updated MongoDocument</returns>
-        /// <response code="200">Returns the newly updated query</response>
+        /// <param name="id">The query ID</param>
+        /// <param name="request">The JSON body of the request</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Sample request:
+        /// 
+        ///     POST /api/query/672b84ef75e2d0b792658f24
+        ///     {
+        ///     "fields": ["column1", "column2"],
+        ///     "filters": [
+        ///         {"Concat": "AND", "FieldName":"Column4" ,"Condition":"=", "Values": ["'Value1'"]  } ,
+        ///         {"Concat": "OR", "FieldName":"Column1" ,"Condition":"IN", "Values": ["'Value4'","'Value1'"]  }
+        ///         ...
+        ///     ],
+        ///     "limit": 100,
+        ///     }
+        ///         
+        /// </remarks>
+        /// <response code="200">Returns the newly created item</response>
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
-        /// <response code="408">If the request times out</response>    
+        /// <response code="408">If the request times out</response> 
         [HttpPost("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
         {
