@@ -22,8 +22,7 @@ namespace DiscoData2API.Services
         public readonly int _limit;
         public readonly int _timeout;
         private readonly HttpClient _httpClient;
-
-        private int count = 0;
+        
 
         public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger, IHttpClientFactory httpClientFactory)
         {
@@ -44,25 +43,23 @@ namespace DiscoData2API.Services
             string jsonResult = string.Empty;
             //            try
             //{
-            count = 0;
-                // Authenticate and obtain token
-                var token = await Authenticate();
-                var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            // Authenticate and obtain token
+            var token = await Authenticate();
+            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
 
-                // Prepare the FlightDescriptor for the query
-                var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-                // Fetch FlightInfo for the query
-                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            // Prepare the FlightDescriptor for the query
+            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+            // Fetch FlightInfo for the query
+            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
 
 
-                var allResults = new List<string>();
-                await foreach (var batch in StreamRecordBatches(flightInfo,headers))
-                {
-                    Console.WriteLine($"Read batch from flight server: \n {batch}");
-                    count = count + batch.Length;
-                    //allResults.Add(ConvertRecordBatchToJson(batch));
-                    await Task.Delay(TimeSpan.FromMilliseconds(100));
-                }
+            var allResults = new StringBuilder("[");
+            await foreach (var batch in StreamRecordBatches(flightInfo,headers))
+            {
+                //Console.WriteLine($"Read batch from flight server: \n {batch}");
+                allResults.Append(ConvertRecordBatchToJson(batch));
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
 
 
             /*
@@ -88,9 +85,8 @@ namespace DiscoData2API.Services
                 }
             }
             */
-
-
-            return string.Format(@"[{{{0}}}]", count);  // $"[{string.Join(",", allResults)}]";
+            allResults.Append("]");
+            return allResults.ToString();
 /*
             }
             catch (Exception ex)
@@ -193,14 +189,12 @@ namespace DiscoData2API.Services
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    var  a = 2;
+                catch {         
                 }
 
                 data.Add(rowData);
             }
-            count = count + data.Count;
+            
 
             return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
         }

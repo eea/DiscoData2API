@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 
 namespace DiscoData2API.Class
@@ -35,11 +36,22 @@ namespace DiscoData2API.Class
             // Concatenate filters 
             filter_query.AppendFormat(" {0} (", Concat);
             filter_query.AppendFormat("{0} ", FieldName);
-            filter_query.AppendFormat("{0} {1}",
-                Condition,
-                string.Join(Condition.ToUpper().Trim() == "BETWEEN" ? " AND " : ",", Values));
-            filter_query.Append(") ");
 
+            filter_query.AppendFormat("{0} " , Condition);
+
+            switch (Condition.ToUpper().Trim())
+            {
+                case "BETWEEN":
+                    filter_query.AppendFormat("{0} ", string.Join(" AND " , Values));
+                    break;
+                case "IN":
+                    filter_query.AppendFormat("( {0} )", string.Join(", ", Values));
+                    break;
+                default:
+                    filter_query.Append(string.Join(", ", Values));
+                    break;
+            }
+            filter_query.Append(") ");
 
             return filter_query.ToString();
         }
