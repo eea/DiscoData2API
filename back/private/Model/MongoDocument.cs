@@ -1,3 +1,4 @@
+using Google.Protobuf.WellKnownTypes;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -40,7 +41,8 @@ namespace DiscoData2API_Priv.Model
 
     public class Field
     {
-        private string _type = string.Empty;
+        private string? _type = string.Empty;
+        private string? _size = string.Empty;
 
         [BsonElement("name")]
         public string Name { get; set; } = null!;
@@ -48,12 +50,11 @@ namespace DiscoData2API_Priv.Model
         [BsonElement("type")]
         public string Type
         {
-            get { return _type; }
+            get { return string.IsNullOrEmpty(_type) ? string.Empty : _type; }
             set
             {
                 _type = "string";
-#pragma warning disable IDE0066 // Convertir una instrucción switch en expresión
-                switch (value)
+                switch (value.ToUpper())
                 {
                     case "CHARACTER":
                     case "CHARACTER VARYING":
@@ -61,15 +62,21 @@ namespace DiscoData2API_Priv.Model
                         break;
                     case "INTEGER":
                         _type = "int32";
+                        _size = "4";
                         break;
                     case "BIGINT":
                         _type = "int64";
+                        _size = "8";
                         break;
                     case "DOUBLE":
                     case "FLOAT":
                     case "FLOAT32":
                     case "FLOAT64":
+                    case "DECIMAL":
+                    case "DECIMAL128":
+                    case "DECIMAL256":
                         _type = "float64";
+                        _size = "8";
                         break;
                     case "geometry":
                         _type = "geometry";
@@ -83,7 +90,6 @@ namespace DiscoData2API_Priv.Model
                         _type = value.ToLower();
                         break;
                 }
-#pragma warning restore IDE0066 // Convertir una instrucción switch en expresión
             }
         }
 
@@ -91,7 +97,14 @@ namespace DiscoData2API_Priv.Model
         public bool IsNullable { get; set; } = true!;
 
         [BsonElement("columnSize")]
-        public string? ColumnSize { get; set; }
+        public string? ColumnSize {
+            get { return _size; }
+            set
+            {
+                _size = value;
+            }
+        
+        }
 
         [BsonIgnoreIfNull]
         [BsonElement("description")]

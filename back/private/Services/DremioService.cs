@@ -38,10 +38,8 @@ namespace DiscoData2API_Priv.Services
 
         }
 
-        public async Task<string> ExecuteQuery(string query, CancellationToken cts)
+        private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
-            //            try
-            //{
             // Authenticate and obtain token
             var token = await Authenticate();
             var headers = new Metadata { { "authorization", $"Bearer {token}" } };
@@ -51,9 +49,65 @@ namespace DiscoData2API_Priv.Services
             // Fetch FlightInfo for the query
             var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
 
+            return (flightInfo, headers);
+        }
+
+
+        public async Task<List<DiscoData2API_Priv.Model.Field >>  GetSchema(string query, CancellationToken cts)
+        {
+            List<DiscoData2API_Priv.Model.Field> fieldsList = [];
+            var flightInfo = await ConnectArrowFlight(query, cts);
+            if (flightInfo.Item1 != null)
+            {
+                foreach (Field f in flightInfo.Item1.Schema.FieldsList)
+                {
+                    Model.Field target_field = new()
+                    {
+                        Name = f.Name,                        
+                        Description = "",
+                        Type = f.DataType.TypeId.ToString(),
+                        IsNullable = f.IsNullable
+                    };
+
+                    if (f.HasMetadata)
+                    {
+                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:TYPE_NAME", out string? metatype))
+                            target_field.Type = string.Compare(f.Name, "geometry", true) ==0 ||
+                                                string.Compare(f.Name, "geom", true ) == 0 ? "geometry" : metatype;
+
+                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:PRECISION", out string? metavalue))
+                            target_field.ColumnSize = metavalue;
+                    }
+
+                    fieldsList.Add(target_field);
+                }
+            }
+
+            return fieldsList;
+        }
+
+
+        public async Task<string> ExecuteQuery(string query, CancellationToken cts)
+        {
+
+            var flightInfo = await ConnectArrowFlight(query, cts);
+
+            /*
+            // Authenticate and obtain token
+            var token = await Authenticate();
+            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+
+            // Prepare the FlightDescriptor for the query
+            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+            // Fetch FlightInfo for the query
+            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            */
+
+
+
 
             var allResults = new StringBuilder("[");
-            await foreach (var batch in StreamRecordBatches(flightInfo, headers))
+            await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
@@ -61,45 +115,8 @@ namespace DiscoData2API_Priv.Services
             }
 
 
-            /*
-
-            // Iterate over the returned tickets from FlightInfo
-            foreach (var endpoint in flightInfo.Endpoints)
-            {
-                // Each endpoint provides a ticket for data retrieval
-                var ticket = endpoint.Ticket;
-
-                // Open a stream for the ticket
-                using var stream = _flightClient.GetStream(ticket, headers);
-
-                // Process stream of Arrow RecordBatches
-                while (await stream.ResponseStream.MoveNext(cts))
-                {
-                    var current = await Task.Run(() =>
-                    {
-                        var data = stream.ResponseStream.Current;
-                        return data;
-                    }, cts);
-                    allResults.Add(await Task.Run(() => ConvertRecordBatchToJson(current), cts));
-                }
-            }
-            */
             allResults.Append(']');
             return allResults.ToString();
-            /*
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error while executing query via Arrow Flight.");
-                            throw;
-                        }
-                        finally
-                        {
-                            // Send clear command to drop all data from the server.
-                            var clear_result = _flightClient.DoAction(new FlightAction("clear"));
-                            await clear_result.ResponseStream.MoveNext(default);
-                        }
-            */
         }
 
         public async Task<DremioLogin?> ApiLogin()
