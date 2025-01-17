@@ -9,6 +9,8 @@ using ZstdSharp.Unsafe;
 using MongoDB.Driver;
 using System.Text;
 using DiscoData2API.Class;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Xml.Linq;
 
 namespace DiscoData2API_Priv.Controllers
 {
@@ -98,33 +100,49 @@ namespace DiscoData2API_Priv.Controllers
         }
 
         /// <summary>
-        /// Update a query (MongoDB)
+        /// Update a view (MongoDB)
         /// </summary>
         /// <param name="id">The Id of the query to update</param>
-        /// <param name="request"></param>
+        /// <param name="request">The JSON body of the request</param>
         /// <returns>Returns the updated MongoDocument</returns>
         /// <response code="200">Returns the newly updated query</response>
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>    
-
         [HttpPost("UpdateQuery/{id}")]
-        public async Task<ActionResult<MongoDocument>> UpdateQuery(string id, [FromBody] MongoDocument request)
+        public async Task<ActionResult<MongoDocument>> UpdateQuery(string id, [FromBody] MongoBaseDocument request)
         {
             try
             {
-                var doc =await mongoService.ReadAsync(id);
+                bool hasId = true;
+                MongoDocument? doc= await mongoService.ReadAsync(id, false);
+                //if the ID was not created. Try finding by MongoDB id
+                if (doc==null)
+                {
+                    doc = await mongoService.ReadByMongoIDAsync(id);
+                    hasId = false;
+                }
+                if (doc==null) throw new ViewNotFoundException();
 
-                if (request.Query == null || !SQLExtensions.ValidateSQL(request.Query))
+                
+                if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
                 {
                     logger.LogWarning("SQL query contains unsafe keywords.");
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
+                if (!hasId) doc.ID = System.Guid.NewGuid().ToString();
                 //we update the fields in case the query changed
-                request.Fields = ExtractFieldsFromQuery(request.Query).Result;
+                doc.Query = request.Query;
+                doc.Name = request.Name;
+                if (!string.IsNullOrEmpty(request.UserAdded) )  doc.UserAdded = request.UserAdded;
+                if (!string.IsNullOrEmpty(request.Version)) doc.Version = request.Version;
+                doc.Description = request.Description;
+                doc.Fields = await ExtractFieldsFromQuery(request.Query);
+                doc.IsActive = true;
+                doc.Date = DateTime.Now;
 
-                var updatedDocument = await mongoService.UpdateAsync(id, request);
+                var updatedDocument = await mongoService.UpdateAsync(id, doc,true);
                 if (updatedDocument == null)
                 {
                     logger.LogWarning($"Document with id {id} could not be updated.");
@@ -310,7 +328,7 @@ namespace DiscoData2API_Priv.Controllers
 
 
             // Add filters to query if they exist
-            string filter_query = String.Empty;
+            string filter_query =string.Empty;
             StringBuilder _filter_query = new();
             if (filters != null && filters.Length > 0)
             {
@@ -348,41 +366,18 @@ namespace DiscoData2API_Priv.Controllers
 
         #region Extract fields from query
 
+
+        //use pure flight methods and properties to extract schema
         private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
         {
-            List<Field> fieldsList = [];
-
             try
             {
                 var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
-                var queryColumns = string.Format(@" CREATE TABLE if not exists {0} AS
-                            select * from ({1} ) limit 1;", temp_table_name, query);
-                var result = await dremioService.ExecuteQuery(queryColumns, cts.Token);
 
 
-                queryColumns = $"describe table {temp_table_name}";
-                result = await dremioService.ExecuteQuery(queryColumns, cts.Token);
-
-                var columns = JsonSerializer.Deserialize<List<DremioColumn>>(result);
-
-                if (columns != null)
-                {
-                    foreach (var column in columns)
-                    {
-                        fieldsList.Add(new Field()
-                        {
-                            Name = column.COLUMN_NAME,
-                            Type = column.COLUMN_NAME == "geometry" || column.COLUMN_NAME == "geom" ? "geometry" : column.DATA_TYPE,
-                            IsNullable = column.IS_NULLABLE == "YES",
-                            ColumnSize = column.COLUMN_SIZE.ToString()
-                        });
-                    }
-                }
-
-                result = await dremioService.ExecuteQuery(string.Format("DROP TABLE {0}", temp_table_name), cts.Token);
-
-                return fieldsList;
+                var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;",  query);
+                return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
             }
 
 

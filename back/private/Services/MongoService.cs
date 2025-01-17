@@ -67,14 +67,16 @@ namespace DiscoData2API_Priv.Services
         /// <summary>
         /// Get document by id
         /// </summary>
-        /// <param name="id"></param>
-        public async Task<MongoDocument?> ReadAsync(string id)
+        /// <param name="id">UUID of the view</param>
+        /// <param name="exception">Throw exception if ID does not exist. true by default</param>
+        public async Task<MongoDocument?> ReadAsync(string id, bool exception=true)
         {
             try
             {
                 MongoDocument doc= await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
                 if (doc!=null) return doc;
-                throw new ViewNotFoundException();
+                if (exception) throw new ViewNotFoundException();
+                return null;
 
             }
             catch (Exception ex)
@@ -85,17 +87,43 @@ namespace DiscoData2API_Priv.Services
         }
 
         /// <summary>
+        /// Get document by MongoId
+        /// </summary>
+        /// <param name="_id">MongoID</param>
+        public async Task<MongoDocument?> ReadByMongoIDAsync(string _id)
+        {
+            try
+            {
+                MongoDocument doc = await _collection.Find(p => p._id == _id && p.IsActive).FirstOrDefaultAsync();
+                if (doc != null) return doc;
+                throw new ViewNotFoundException();
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error while getting document with id {_id}");
+                throw;
+            }
+        }
+
+
+
+        /// <summary>
         /// Update a document by id
         /// </summary>
         /// <param name="id">The Id of the document to update</param>
         /// <param name="newDocument">What to change. Only pass what you wanna change</param>
+        /// <param name="MongoDB_id">True if id is MongoDB id</param>
         /// <returns></returns>
-        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument)
+        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument, bool MongoDB_id=false)
         {
             try
             {
                 // Fetch the existing document
-                var myDocument = await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                MongoDocument myDocument = MongoDB_id ?
+                    await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync() :
+                    await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+
 
                 if (myDocument == null)
                 {
@@ -105,13 +133,19 @@ namespace DiscoData2API_Priv.Services
 
                 // Update only the provided fields
                 myDocument.Name = !string.IsNullOrEmpty(newDocument.Name) ? newDocument.Name : myDocument.Name;
+                myDocument.Description = !string.IsNullOrEmpty(newDocument.Description) ? newDocument.Description : myDocument.Description;
                 myDocument.Query = !string.IsNullOrEmpty(newDocument.Query) ? newDocument.Query : myDocument.Query;
                 myDocument.Fields = newDocument.Fields ?? myDocument.Fields;
                 myDocument.Version = !string.IsNullOrEmpty(newDocument.Version) ? newDocument.Version : myDocument.Version;
+                myDocument.UserAdded = !string.IsNullOrEmpty(newDocument.UserAdded) ? newDocument.UserAdded : myDocument.UserAdded;
                 myDocument.Date = newDocument.Date ?? myDocument.Date;
+                myDocument.ID = newDocument.ID;
 
                 // Replace the updated document
-                await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
+                if (MongoDB_id) 
+                    await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
+                else
+                    await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
 
                 return myDocument;
             }
