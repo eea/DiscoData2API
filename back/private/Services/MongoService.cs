@@ -90,15 +90,14 @@ namespace DiscoData2API_Priv.Services
         /// Get document by MongoId
         /// </summary>
         /// <param name="_id">MongoID</param>
-        /// <param name="exception">Throw exception if ID does not exist. true by default</param>
-        public async Task<MongoDocument?> ReadByMongoIDAsync(string _id, bool exception=true)
+        public async Task<MongoDocument?> ReadByMongoIDAsync(string _id)
         {
             try
             {
                 MongoDocument doc = await _collection.Find(p => p._id == _id && p.IsActive).FirstOrDefaultAsync();
                 if (doc != null) return doc;
-                if (exception) throw new ViewNotFoundException();
-                return null;
+                throw new ViewNotFoundException();
+
             }
             catch (Exception ex)
             {
@@ -114,13 +113,17 @@ namespace DiscoData2API_Priv.Services
         /// </summary>
         /// <param name="id">The Id of the document to update</param>
         /// <param name="newDocument">What to change. Only pass what you wanna change</param>
+        /// <param name="MongoDB_id">True if id is MongoDB id</param>
         /// <returns></returns>
-        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument)
+        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument, bool MongoDB_id=false)
         {
             try
             {
                 // Fetch the existing document
-                var myDocument = await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                MongoDocument myDocument = MongoDB_id ?
+                    await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync() :
+                    await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+
 
                 if (myDocument == null)
                 {
@@ -136,9 +139,13 @@ namespace DiscoData2API_Priv.Services
                 myDocument.Version = !string.IsNullOrEmpty(newDocument.Version) ? newDocument.Version : myDocument.Version;
                 myDocument.UserAdded = !string.IsNullOrEmpty(newDocument.UserAdded) ? newDocument.UserAdded : myDocument.UserAdded;
                 myDocument.Date = newDocument.Date ?? myDocument.Date;
+                myDocument.ID = newDocument.ID;
 
                 // Replace the updated document
-                await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
+                if (MongoDB_id) 
+                    await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
+                else
+                    await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
 
                 return myDocument;
             }

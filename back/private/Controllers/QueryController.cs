@@ -115,7 +115,7 @@ namespace DiscoData2API_Priv.Controllers
             try
             {
                 bool hasId = true;
-                MongoDocument? doc= await mongoService.ReadAsync(id, true);
+                MongoDocument? doc= await mongoService.ReadAsync(id, false);
                 //if the ID was not created. Try finding by MongoDB id
                 if (doc==null)
                 {
@@ -138,11 +138,11 @@ namespace DiscoData2API_Priv.Controllers
                 if (!string.IsNullOrEmpty(request.UserAdded) )  doc.UserAdded = request.UserAdded;
                 if (!string.IsNullOrEmpty(request.Version)) doc.Version = request.Version;
                 doc.Description = request.Description;
-                doc.Fields = ExtractFieldsFromQuery(request.Query).Result;
+                doc.Fields = await ExtractFieldsFromQuery(request.Query);
                 doc.IsActive = true;
                 doc.Date = DateTime.Now;
 
-                var updatedDocument = await mongoService.UpdateAsync(id, doc);
+                var updatedDocument = await mongoService.UpdateAsync(id, doc,true);
                 if (updatedDocument == null)
                 {
                     logger.LogWarning($"Document with id {id} could not be updated.");
