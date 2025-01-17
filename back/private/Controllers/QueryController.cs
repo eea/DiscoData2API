@@ -102,7 +102,7 @@ namespace DiscoData2API_Priv.Controllers
         /// <summary>
         /// Update a view (MongoDB)
         /// </summary>
-        /// <param name="id">The Id of the query to update</param>
+        /// <param name="id">The Id (UUID or MongoDB Id) of the view to update. If the UUID does not exist it will search for MongoDB ID </param>
         /// <param name="request">The JSON body of the request</param>
         /// <returns>Returns the updated MongoDocument</returns>
         /// <response code="200">Returns the newly updated query</response>
