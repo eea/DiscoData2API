@@ -103,7 +103,6 @@ namespace DiscoData2API_Priv.Model
             {
                 _size = value;
             }
-        
         }
 
         [BsonIgnoreIfNull]
