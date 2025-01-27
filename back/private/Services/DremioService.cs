@@ -56,9 +56,7 @@ namespace DiscoData2API_Priv.Services
         public async Task<List<DiscoData2API_Priv.Model.Field >>  GetSchema(string query, CancellationToken cts)
         {
             List<DiscoData2API_Priv.Model.Field> fieldsList = [];
-            _logger.LogError("CCCCCCC");
             var flightInfo = await ConnectArrowFlight(query, cts);
-            _logger.LogError("DDDD");
             if (flightInfo.Item1 != null)
             {
                 foreach (Field f in flightInfo.Item1.Schema.FieldsList)

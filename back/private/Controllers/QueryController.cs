@@ -375,12 +375,7 @@ namespace DiscoData2API_Priv.Controllers
             {
                 var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
-
-                logger.LogError("AAAAAAAAAAAA");
-
-
                 var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;",  query);
-                logger.LogError("BBBBBBBB");
                 return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
             }
 
