@@ -124,7 +124,6 @@ namespace DiscoData2API_Priv.Services
                     await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync() :
                     await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
 
-
                 if (myDocument == null)
                 {
                     _logger.LogWarning($"Document with id {id} not found or inactive.");
