@@ -41,7 +41,7 @@ namespace DiscoData2API.Controllers
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>
         [HttpGet("Get/{id}")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:La plantilla debe ser una expresión estática", Justification = "<pendiente>")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:La plantilla debe ser una expresiï¿½n estï¿½tica", Justification = "<pendiente>")]
         public async Task<ActionResult<MongoPublicDocument>> GetById(string id)
         {
             try
@@ -163,7 +163,6 @@ namespace DiscoData2API.Controllers
                     _filter_query.AppendFormat(" {0} ", filter.BuildFilterString());
                 }
             }
-
 
             // Ensure LIMIT is always at the end
             limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;

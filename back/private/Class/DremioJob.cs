@@ -6,5 +6,7 @@ namespace DiscoData2API_Priv.Class
     {
         [JsonPropertyName("id")]
         public string? Id { get; set; }
+
+        public string? Query { get; set; }
     }
 }

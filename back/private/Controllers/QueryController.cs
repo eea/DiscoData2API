@@ -96,7 +96,6 @@ namespace DiscoData2API_Priv.Controllers
                 return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
 
             }
-
         }
 
         /// <summary>
@@ -234,7 +233,6 @@ namespace DiscoData2API_Priv.Controllers
                 logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
-
         }
 
         /// <summary>
@@ -325,8 +323,7 @@ namespace DiscoData2API_Priv.Controllers
             // Update fields returned by query
             fields = fields != null && fields.Length > 0 ? fields : ["*"];
             var _query_aux = query;
-            _query_aux = _query_aux.Replace("*", string.Join(",", fields));
-
+            _query_aux = _query_aux.Replace("*", string.Join(",", fields));  //used for debugging
 
             // Add filters to query if they exist
             string filter_query =string.Empty;
@@ -340,11 +337,8 @@ namespace DiscoData2API_Priv.Controllers
                 }
             }
 
-
             // Ensure LIMIT is always at the end
             limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-
-
 
             string full_query;
             if (string.IsNullOrEmpty(filter_query))
@@ -367,7 +361,6 @@ namespace DiscoData2API_Priv.Controllers
 
         #region Extract fields from query
 
-
         //use pure flight methods and properties to extract schema
         private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
         {
@@ -378,17 +371,13 @@ namespace DiscoData2API_Priv.Controllers
                 var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;",  query);
                 return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
             }
-
-
             catch (Exception ex)
             {
                 logger.LogError(ex.Message);
 
                 throw; // new Exception("Invalid query");
-
             }
         }
-
 
         #endregion
 

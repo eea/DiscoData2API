@@ -6,7 +6,6 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API.Class;
 using DiscoData2API_Priv.Class;
 
 namespace DiscoData2API_Priv.Services
@@ -35,9 +34,75 @@ namespace DiscoData2API_Priv.Services
             _timeout = dremioSettings.Value.Timeout;
             _httpClient = httpClientFactory.CreateClient();
             _flightClient = InitializeFlightClient();
-
         }
 
+        /// <summary>
+        /// Execute a query on Dremio and return the results as a JSON string
+        /// </summary>
+        /// <param name="query">The query to execute</param>
+        /// <param name="cts">The Cancellation token</param>
+        /// <returns></returns>
+        public async Task<string> ExecuteQuery(string query, CancellationToken cts)
+        {
+            var flightInfo = await ConnectArrowFlight(query, cts);
+
+            var allResults = new StringBuilder("[");
+            await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
+            {
+                //Console.WriteLine($"Read batch from flight server: \n {batch}");
+                allResults.Append(ConvertRecordBatchToJson(batch));
+                await Task.Delay(TimeSpan.FromMilliseconds(10), cts);
+            }
+
+            allResults.Append(']');
+            return allResults.ToString();
+        }
+
+        /// <summary>
+        /// Get the fields returned by a query
+        /// </summary>
+        /// <param name="query">The query string</param>
+        /// <param name="cts">The cancellation tocken</param>
+        /// <returns></returns>
+        public async Task<List<Model.Field>> GetSchema(string query, CancellationToken cts)
+        {
+            List<Model.Field> fieldsList = [];
+            var flightInfo = await ConnectArrowFlight(query, cts);
+            if (flightInfo.Item1 != null)
+            {
+                foreach (Field f in flightInfo.Item1.Schema.FieldsList)
+                {
+                    Model.Field target_field = new()
+                    {
+                        Name = f.Name,
+                        Description = "",
+                        Type = f.DataType.TypeId.ToString(),
+                        IsNullable = f.IsNullable
+                    };
+
+                    if (f.HasMetadata)
+                    {
+                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:TYPE_NAME", out string? metatype))
+                            target_field.Type = string.Compare(f.Name, "geometry", true) == 0 ||
+                                                string.Compare(f.Name, "geom", true) == 0 ? "geometry" : metatype;
+
+                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:PRECISION", out string? metavalue))
+                            target_field.ColumnSize = metavalue;
+                    }
+
+                    fieldsList.Add(target_field);
+                }
+            }
+
+            return fieldsList;
+        }
+
+        /// <summary>
+        /// Connect to Arrow Flight and get FlightInfo for the query
+        /// </summary>
+        /// <param name="query">The query to run</param>
+        /// <param name="cts">The cancellation token</param>
+        /// <returns></returns>
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
             // Authenticate and obtain token
@@ -52,105 +117,39 @@ namespace DiscoData2API_Priv.Services
             return (flightInfo, headers);
         }
 
+        #region Helpers
 
-        public async Task<List<DiscoData2API_Priv.Model.Field >>  GetSchema(string query, CancellationToken cts)
-        {
-            List<DiscoData2API_Priv.Model.Field> fieldsList = [];
-            var flightInfo = await ConnectArrowFlight(query, cts);
-            if (flightInfo.Item1 != null)
-            {
-                foreach (Field f in flightInfo.Item1.Schema.FieldsList)
-                {
-                    Model.Field target_field = new()
-                    {
-                        Name = f.Name,                        
-                        Description = "",
-                        Type = f.DataType.TypeId.ToString(),
-                        IsNullable = f.IsNullable
-                    };
-
-                    if (f.HasMetadata)
-                    {
-                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:TYPE_NAME", out string? metatype))
-                            target_field.Type = string.Compare(f.Name, "geometry", true) ==0 ||
-                                                string.Compare(f.Name, "geom", true ) == 0 ? "geometry" : metatype;
-
-                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:PRECISION", out string? metavalue))
-                            target_field.ColumnSize = metavalue;
-                    }
-
-                    fieldsList.Add(target_field);
-                }
-            }
-
-            return fieldsList;
-        }
-
-
-        public async Task<string> ExecuteQuery(string query, CancellationToken cts)
-        {
-
-            var flightInfo = await ConnectArrowFlight(query, cts);
-
-            /*
-            // Authenticate and obtain token
-            var token = await Authenticate();
-            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
-
-            // Prepare the FlightDescriptor for the query
-            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-            // Fetch FlightInfo for the query
-            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
-            */
-
-
-
-
-            var allResults = new StringBuilder("[");
-            await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
-            {
-                //Console.WriteLine($"Read batch from flight server: \n {batch}");
-                allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10),cts);
-            }
-
-
-            allResults.Append(']');
-            return allResults.ToString();
-        }
-
-        public async Task<DremioLogin?> ApiLogin()
+         private async Task<string> Authenticate()
         {
             try
             {
-                // Prepare login data as JSON
+                // Prepare login payload
                 var loginData = new { userName = _username, password = _password };
                 var jsonLoginData = JsonSerializer.Serialize(loginData);
-                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json"); // Set content-type here
+                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
-                // Make the POST request
-                var response = await _httpClient.PostAsync(_dremioServer + "/apiv2/login", content);
-                response.EnsureSuccessStatusCode(); // Throw if not a success status code
+                // Make the POST request for authentication
+                using var client = new HttpClient();
+                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
+                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
+                response.EnsureSuccessStatusCode();
 
-                // Parse the response to retrieve the token
-                var responseData = await response.Content.ReadAsStringAsync();
-                var responseJson = JsonSerializer.Deserialize<DremioLogin>(responseData);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var loginResponse = JsonSerializer.Deserialize<DremioLogin>(responseContent);
 
-                if (responseJson == null || string.IsNullOrEmpty(responseJson.Token))
+                if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
                 {
-                    _logger.LogWarning("Dremio Token not found in response");
-                    return null;
+                    throw new Exception("Failed to authenticate with Dremio. Token not received.");
                 }
-                return responseJson;
+
+                return loginResponse.Token;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while getting token from Dremio.");
-                return null;
+                _logger.LogError(ex, "Error while authenticating with Dremio.");
+                throw;
             }
         }
-
-        #region Helpers
 
         private FlightClient InitializeFlightClient()
         {
@@ -216,40 +215,6 @@ namespace DiscoData2API_Priv.Services
             return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
         }
 
-        private async Task<string> Authenticate()
-        {
-            try
-            {
-                // Prepare login payload
-                var loginData = new { userName = _username, password = _password };
-                var jsonLoginData = JsonSerializer.Serialize(loginData);
-                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
-
-                // Make the POST request for authentication
-                using var client = new HttpClient();
-                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
-                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
-                response.EnsureSuccessStatusCode();
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var loginResponse = JsonSerializer.Deserialize<DremioLogin>(responseContent);
-
-                if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
-                {
-                    throw new Exception("Failed to authenticate with Dremio. Token not received.");
-                }
-
-                return loginResponse.Token;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while authenticating with Dremio.");
-                throw;
-            }
-        }
-
-        #endregion
-
         public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers)
         {
             // There might be multiple endpoints hosting part of the data. In simple services,
@@ -268,5 +233,7 @@ namespace DiscoData2API_Priv.Services
                 }
             }
         }
+  
+        #endregion
     }
 }
