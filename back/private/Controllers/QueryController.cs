@@ -1,12 +1,9 @@
 using DiscoData2API_Priv.Services;
-using DiscoData2API_Priv.Class;
 using DiscoData2API_Priv.Model;
 using Microsoft.AspNetCore.Mvc;
 using DiscoData2API_Priv.Misc;
-using System.Text.RegularExpressions;
-using System.Text.Json;
-using ZstdSharp.Unsafe;
-using MongoDB.Driver;
+
+
 using System.Text;
 using DiscoData2API.Class;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -131,7 +128,7 @@ namespace DiscoData2API_Priv.Controllers
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
-                if (!hasId) doc.ID = System.Guid.NewGuid().ToString();
+                if (!hasId && string.IsNullOrEmpty(doc.ID)  ) doc.ID = System.Guid.NewGuid().ToString();
                 //we update the fields in case the query changed
                 doc.Query = request.Query;
                 doc.Name = request.Name;
@@ -142,7 +139,7 @@ namespace DiscoData2API_Priv.Controllers
                 doc.IsActive = true;
                 doc.Date = DateTime.Now;
 
-                var updatedDocument = await mongoService.UpdateAsync(id, doc,true);
+                var updatedDocument = await mongoService.UpdateAsync(id, doc, hasId);
                 if (updatedDocument == null)
                 {
                     logger.LogWarning($"Document with id {id} could not be updated.");
@@ -366,7 +363,7 @@ namespace DiscoData2API_Priv.Controllers
         {
             try
             {
-                var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
+                //var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
                 var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;",  query);
                 return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
