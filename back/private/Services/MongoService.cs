@@ -113,7 +113,7 @@ namespace DiscoData2API_Priv.Services
         /// </summary>
         /// <param name="id">The Id of the document to update</param>
         /// <param name="newDocument">What to change. Only pass what you wanna change</param>
-        /// <param name="MongoDB_id">True if id is MongoDB id</param>
+        /// <param name="has_uuid">False if id is MongoDB id</param>
         /// <returns></returns>
         public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument, bool has_uuid=true)
         {

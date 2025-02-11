@@ -106,22 +106,15 @@ namespace DiscoData2API_Priv.Services
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
             // Authenticate and obtain token
-            try
-            {
-                var token = await Authenticate();
-                var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            var token = await Authenticate();
+            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
 
-                // Prepare the FlightDescriptor for the query
-                var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-                // Fetch FlightInfo for the query
-                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            // Prepare the FlightDescriptor for the query
+            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+            // Fetch FlightInfo for the query
+            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
 
-                return (flightInfo, headers);
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return (flightInfo, headers);
         }
 
         #region Helpers
