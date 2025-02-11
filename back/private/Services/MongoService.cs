@@ -115,14 +115,14 @@ namespace DiscoData2API_Priv.Services
         /// <param name="newDocument">What to change. Only pass what you wanna change</param>
         /// <param name="MongoDB_id">True if id is MongoDB id</param>
         /// <returns></returns>
-        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument, bool MongoDB_id=false)
+        public async Task<MongoDocument?> UpdateAsync(string id, MongoDocument newDocument, bool has_uuid=true)
         {
             try
             {
                 // Fetch the existing document
-                MongoDocument myDocument = MongoDB_id ?
-                    await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync() :
-                    await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                MongoDocument myDocument = has_uuid ?
+                    await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync() :
+                    await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
 
                 if (myDocument == null)
                 {
@@ -141,10 +141,10 @@ namespace DiscoData2API_Priv.Services
                 myDocument.ID = newDocument.ID;
 
                 // Replace the updated document
-                if (MongoDB_id) 
-                    await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
-                else
+                if (has_uuid) 
                     await _collection.ReplaceOneAsync(p => p.ID == id, myDocument);
+                else
+                    await _collection.ReplaceOneAsync(p => p._id == id, myDocument);
 
                 return myDocument;
             }

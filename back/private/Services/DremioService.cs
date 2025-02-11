@@ -51,7 +51,7 @@ namespace DiscoData2API_Priv.Services
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10), cts);
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
 
             allResults.Append(']');
@@ -106,15 +106,22 @@ namespace DiscoData2API_Priv.Services
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
             // Authenticate and obtain token
-            var token = await Authenticate();
-            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            try
+            {
+                var token = await Authenticate();
+                var headers = new Metadata { { "authorization", $"Bearer {token}" } };
 
-            // Prepare the FlightDescriptor for the query
-            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-            // Fetch FlightInfo for the query
-            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+                // Prepare the FlightDescriptor for the query
+                var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+                // Fetch FlightInfo for the query
+                var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
 
-            return (flightInfo, headers);
+                return (flightInfo, headers);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         #region Helpers
