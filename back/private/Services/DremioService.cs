@@ -44,14 +44,16 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
+            _logger.LogInformation($"Start execute query");
             var flightInfo = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"Afer execute ConnectArrowFlight");
 
             var allResults = new StringBuilder("[");
             await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(TimeSpan.FromMilliseconds(10),cts);
             }
 
             allResults.Append(']');
@@ -105,14 +107,20 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
+            _logger.LogInformation($"Before authenticate");
+
             // Authenticate and obtain token
             var token = await Authenticate();
+            _logger.LogInformation($"ConnectArrowFlight 1");
             var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            _logger.LogInformation($"ConnectArrowFlight 2");
 
             // Prepare the FlightDescriptor for the query
             var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+            _logger.LogInformation($"ConnectArrowFlight 3");
             // Fetch FlightInfo for the query
             var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            _logger.LogInformation($"ConnectArrowFlight 4");
 
             return (flightInfo, headers);
         }

@@ -264,7 +264,6 @@ namespace DiscoData2API_Priv.Controllers
             try
             {
                 MongoDocument? mongoDoc = await mongoService.GetFullDocumentById(id);
-
                 if (mongoDoc == null)
                 {
                     logger.LogError($"Query with id {id} not found");
