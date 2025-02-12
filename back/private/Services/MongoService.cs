@@ -38,7 +38,7 @@ namespace DiscoData2API_Priv.Services
         {
             try
             {
-                return await _collection.Find(p => p.IsActive && p.UserAdded == userAdded).ToListAsync();
+                return await _collection.Find(p => p.IsActive && p.UserAdded == userAdded).SortByDescending(p => p.Date).ToListAsync();
             }
             catch
             {
