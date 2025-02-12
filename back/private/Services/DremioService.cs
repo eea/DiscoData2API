@@ -7,6 +7,7 @@ using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
 using DiscoData2API_Priv.Class;
+using System.Net.Http;
 
 namespace DiscoData2API_Priv.Services
 {
@@ -20,10 +21,9 @@ namespace DiscoData2API_Priv.Services
         private readonly FlightClient _flightClient;
         public readonly int _limit;
         public readonly int _timeout;
-        private readonly HttpClient _httpClient;
 
 
-        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger, IHttpClientFactory httpClientFactory)
+        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
             _logger = logger;
             _username = dremioSettings.Value.Username;
@@ -32,7 +32,6 @@ namespace DiscoData2API_Priv.Services
             _dremioServerAuth = dremioSettings.Value.DremioServerAuth;
             _limit = dremioSettings.Value.Limit;
             _timeout = dremioSettings.Value.Timeout;
-            _httpClient = httpClientFactory.CreateClient();
             _flightClient = InitializeFlightClient();
         }
 
