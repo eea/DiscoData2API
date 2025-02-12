@@ -10,7 +10,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DremioController(ILogger<QueryController> logger, DremioService dremioService) : ControllerBase
+    public class DremioController(ILogger<ViewController> logger, DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
@@ -84,8 +84,8 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
 
-        [HttpPost("ValidateQuery")]
-        public async Task<ActionResult<string>> ValidateQuery([FromBody] DremioJob request)
+        [HttpPost("TestQuery")]
+        public async Task<ActionResult<string>> TestQuery([FromBody] DremioJob request)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
