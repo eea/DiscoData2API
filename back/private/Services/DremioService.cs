@@ -140,7 +140,7 @@ namespace DiscoData2API_Priv.Services
                 // Make the POST request for authentication
                 using var client = new HttpClient();
                 // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
-                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
+                using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
                 response.EnsureSuccessStatusCode();
 
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -149,9 +149,9 @@ namespace DiscoData2API_Priv.Services
                 if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
                 {
                     throw new Exception("Failed to authenticate with Dremio. Token not received.");
-                }
-
+                }                
                 return loginResponse.Token;
+
             }
             catch (Exception ex)
             {
