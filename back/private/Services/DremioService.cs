@@ -18,7 +18,7 @@ namespace DiscoData2API_Priv.Services
         private readonly string? _password;
         private readonly string? _dremioServer;
         private readonly string? _dremioServerAuth;
-        private readonly FlightClient _flightClient;
+        private FlightClient _flightClient;
         public readonly int _limit;
         public readonly int _timeout;
 
@@ -34,6 +34,8 @@ namespace DiscoData2API_Priv.Services
             _timeout = dremioSettings.Value.Timeout;
             _flightClient = InitializeFlightClient();
         }
+
+
 
         /// <summary>
         /// Execute a query on Dremio and return the results as a JSON string
@@ -107,6 +109,7 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
+            _flightClient = InitializeFlightClient();
             _logger.LogInformation($"Before authenticate");
 
             // Authenticate and obtain token
@@ -121,7 +124,6 @@ namespace DiscoData2API_Priv.Services
             // Fetch FlightInfo for the query
             var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
             _logger.LogInformation($"ConnectArrowFlight 4");
-
             return (flightInfo, headers);
         }
 
@@ -136,8 +138,13 @@ namespace DiscoData2API_Priv.Services
                 var jsonLoginData = JsonSerializer.Serialize(loginData);
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
+
+                HttpClientHandler clientHandler = new HttpClientHandler();
+                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+
+                // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
-                using var client = new HttpClient();
+                using var client = new HttpClient(clientHandler);
                 // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
                 using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
                 response.EnsureSuccessStatusCode();
@@ -161,7 +168,12 @@ namespace DiscoData2API_Priv.Services
 
         private FlightClient InitializeFlightClient()
         {
-            var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+            //var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+
+            var httpHandler = new HttpClientHandler();
+            httpHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            var channel = GrpcChannel.ForAddress($"{_dremioServer}", new GrpcChannelOptions { HttpHandler = httpHandler });
+
             return new FlightClient(channel);
         }
 
