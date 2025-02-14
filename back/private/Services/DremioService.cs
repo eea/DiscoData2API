@@ -7,6 +7,7 @@ using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
 using DiscoData2API_Priv.Class;
+using System.Net.Http;
 
 namespace DiscoData2API_Priv.Services
 {
@@ -17,13 +18,12 @@ namespace DiscoData2API_Priv.Services
         private readonly string? _password;
         private readonly string? _dremioServer;
         private readonly string? _dremioServerAuth;
-        private readonly FlightClient _flightClient;
+        private FlightClient _flightClient;
         public readonly int _limit;
         public readonly int _timeout;
-        private readonly HttpClient _httpClient;
 
 
-        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger, IHttpClientFactory httpClientFactory)
+        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
             _logger = logger;
             _username = dremioSettings.Value.Username;
@@ -32,9 +32,10 @@ namespace DiscoData2API_Priv.Services
             _dremioServerAuth = dremioSettings.Value.DremioServerAuth;
             _limit = dremioSettings.Value.Limit;
             _timeout = dremioSettings.Value.Timeout;
-            _httpClient = httpClientFactory.CreateClient();
             _flightClient = InitializeFlightClient();
         }
+
+
 
         /// <summary>
         /// Execute a query on Dremio and return the results as a JSON string
@@ -44,17 +45,20 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
+            _logger.LogInformation($"Start execute query");
             var flightInfo = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"Afer execute ConnectArrowFlight");
 
             var allResults = new StringBuilder("[");
             await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(TimeSpan.FromMilliseconds(5),cts);
             }
-
+            _logger.LogInformation($"After query result");
             allResults.Append(']');
+            
             return allResults.ToString();
         }
 
@@ -105,15 +109,21 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
+            _flightClient = InitializeFlightClient();
+            _logger.LogInformation($"Before authenticate");
+
             // Authenticate and obtain token
             var token = await Authenticate();
+            _logger.LogInformation($"ConnectArrowFlight 1");
             var headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            _logger.LogInformation($"ConnectArrowFlight 2");
 
             // Prepare the FlightDescriptor for the query
             var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+            _logger.LogInformation($"ConnectArrowFlight 3");
             // Fetch FlightInfo for the query
             var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
-
+            _logger.LogInformation($"ConnectArrowFlight 4");
             return (flightInfo, headers);
         }
 
@@ -128,10 +138,15 @@ namespace DiscoData2API_Priv.Services
                 var jsonLoginData = JsonSerializer.Serialize(loginData);
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
+
+                HttpClientHandler clientHandler = new HttpClientHandler();
+                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+
+                // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
-                using var client = new HttpClient();
+                using var client = new HttpClient(clientHandler);
                 // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
-                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
+                using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
                 response.EnsureSuccessStatusCode();
 
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -140,9 +155,9 @@ namespace DiscoData2API_Priv.Services
                 if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
                 {
                     throw new Exception("Failed to authenticate with Dremio. Token not received.");
-                }
-
+                }                
                 return loginResponse.Token;
+
             }
             catch (Exception ex)
             {
@@ -153,7 +168,12 @@ namespace DiscoData2API_Priv.Services
 
         private FlightClient InitializeFlightClient()
         {
-            var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+            //var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+
+            var httpHandler = new HttpClientHandler();
+            httpHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            var channel = GrpcChannel.ForAddress($"{_dremioServer}", new GrpcChannelOptions { HttpHandler = httpHandler });
+
             return new FlightClient(channel);
         }
 
