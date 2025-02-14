@@ -8,6 +8,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using DiscoData2API_Priv.Class;
 using System.Net.Http;
+using System.Collections.Generic;
 
 namespace DiscoData2API_Priv.Services
 {
@@ -58,7 +59,14 @@ namespace DiscoData2API_Priv.Services
             }
             _logger.LogInformation($"After query result");
             allResults.Append(']');
-            
+            var action = new FlightAction("Stop Flight Server", new byte[0]);
+            using (var call = _flightClient.DoAction(action))
+            {
+
+            }
+            Console.WriteLine("Action completed.");
+
+
             return allResults.ToString();
         }
 
@@ -109,20 +117,43 @@ namespace DiscoData2API_Priv.Services
         /// <returns></returns>
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
-            _flightClient = InitializeFlightClient();
-            _logger.LogInformation($"Before authenticate");
 
-            // Authenticate and obtain token
-            var token = await Authenticate();
-            _logger.LogInformation($"ConnectArrowFlight 1");
-            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
-            _logger.LogInformation($"ConnectArrowFlight 2");
+            string token = string.Empty;
+            Metadata? headers = null;
+            FlightDescriptor? descriptor = null;
+            FlightInfo? flightInfo = null;
+            //checked first if we can connect to dremio
+            try
+            {
+
+               token  = await Authenticate();
+               headers = new Metadata { { "authorization", $"Bearer {token}" } };
+            }
+            catch
+            {
+                throw;
+            }
+            if (string.IsNullOrEmpty(token))
+                throw new Exception("Cannot connect to Dremio server");
+
+
+            //check if _flightClient is still working
+            try
+            {
+                descriptor = FlightDescriptor.CreateCommandDescriptor("select 1");
+                // Fetch FlightInfo for the query
+                flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            }
+            catch {
+                //otherwise create a new client connection
+                _flightClient = InitializeFlightClient();
+            }
 
             // Prepare the FlightDescriptor for the query
-            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-            _logger.LogInformation($"ConnectArrowFlight 3");
+            descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+
             // Fetch FlightInfo for the query
-            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
             _logger.LogInformation($"ConnectArrowFlight 4");
             return (flightInfo, headers);
         }
