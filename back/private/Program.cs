@@ -42,7 +42,7 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Private)",
-        Version = "v1",
+        Version = "v1.0",
         Description = @"Private API for Querying S3 Parquets via Dremio. <br>This API allows you to create, read, update, and delete SQL-based queries. <br>Queries are stored in MongoDB with a unique identifier.",
     });
 
