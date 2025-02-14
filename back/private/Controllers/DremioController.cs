@@ -10,7 +10,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DremioController(ILogger<QueryController> logger, DremioService dremioService) : ControllerBase
+    public class DremioController(ILogger<ViewController> logger, DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;

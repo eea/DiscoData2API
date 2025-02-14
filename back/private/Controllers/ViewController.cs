@@ -1,9 +1,7 @@
-using DiscoData2API_Priv.Services;
+﻿using DiscoData2API_Priv.Services;
 using DiscoData2API_Priv.Model;
 using Microsoft.AspNetCore.Mvc;
 using DiscoData2API_Priv.Misc;
-
-
 using System.Text;
 using DiscoData2API.Class;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -13,7 +11,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
+    public class ViewController(ILogger<ViewController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
@@ -26,8 +24,8 @@ namespace DiscoData2API_Priv.Controllers
         /// <response code="200">Returns the newly created query</response>
         /// <response code="400">If the query fires an error in the execution</response>        
         /// <response code="408">If the request times out</response>
-        [HttpPost("CreateQuery")]
-        public async Task<ActionResult<MongoDocument>> CreateQuery([FromBody] MongoBaseDocument request)
+        [HttpPost("CreateView")]
+        public async Task<ActionResult<MongoDocument>> CreateView([FromBody] MongoBaseDocument request)
         {
             try
             {
@@ -61,7 +59,8 @@ namespace DiscoData2API_Priv.Controllers
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
             }
@@ -77,7 +76,7 @@ namespace DiscoData2API_Priv.Controllers
         /// <response code="408">If the request times out</response>
         [HttpGet("Get/{id}")]
         public async Task<ActionResult<MongoDocument>> GetById(string id)
-        {            
+        {
             try
             {
                 return await mongoService.ReadAsync(id);
@@ -105,34 +104,34 @@ namespace DiscoData2API_Priv.Controllers
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>    
-        [HttpPost("UpdateQuery/{id}")]
-        public async Task<ActionResult<MongoDocument>> UpdateQuery(string id, [FromBody] MongoBaseDocument request)
+        [HttpPost("UpdateView/{id}")]
+        public async Task<ActionResult<MongoDocument>> UpdateView(string id, [FromBody] MongoBaseDocument request)
         {
             try
             {
                 bool hasId = true;
-                MongoDocument? doc= await mongoService.ReadAsync(id, false);
+                MongoDocument? doc = await mongoService.ReadAsync(id, false);
                 //if the ID was not created. Try finding by MongoDB id
-                if (doc==null)
+                if (doc == null)
                 {
                     doc = await mongoService.ReadByMongoIDAsync(id);
                     hasId = false;
                 }
 
-                if (doc==null) throw new ViewNotFoundException();
+                if (doc == null) throw new ViewNotFoundException();
 
-                
+
                 if (string.IsNullOrEmpty(request.Query) || !SQLExtensions.ValidateSQL(request.Query))
                 {
                     logger.LogWarning("SQL query contains unsafe keywords.");
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
-                if (!hasId && string.IsNullOrEmpty(doc.ID)  ) doc.ID = System.Guid.NewGuid().ToString();
+                if (!hasId && string.IsNullOrEmpty(doc.ID)) doc.ID = System.Guid.NewGuid().ToString();
                 //we update the fields in case the query changed
                 doc.Query = request.Query;
                 doc.Name = request.Name;
-                if (!string.IsNullOrEmpty(request.UserAdded) )  doc.UserAdded = request.UserAdded;
+                if (!string.IsNullOrEmpty(request.UserAdded)) doc.UserAdded = request.UserAdded;
                 if (!string.IsNullOrEmpty(request.Version)) doc.Version = request.Version;
                 doc.Description = request.Description;
                 doc.Fields = await ExtractFieldsFromQuery(request.Query);
@@ -178,15 +177,15 @@ namespace DiscoData2API_Priv.Controllers
         }
 
         /// <summary>
-        /// Delete a query (MongoDB)
+        /// Delete a View (MongoDB)
         /// </summary>
         /// <param name="id"></param>
         /// <returns>Return True if deleted</returns>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>
 
-        [HttpDelete("DeleteQuery/{id}")]
-        public async Task<ActionResult<bool>> DeleteQuery(string id)
+        [HttpDelete("DeleteView/{id}")]
+        public async Task<ActionResult<bool>> DeleteView(string id)
         {
             try
             {
@@ -264,6 +263,7 @@ namespace DiscoData2API_Priv.Controllers
             try
             {
                 MongoDocument? mongoDoc = await mongoService.GetFullDocumentById(id);
+
                 if (mongoDoc == null)
                 {
                     logger.LogError($"Query with id {id} not found");
@@ -322,7 +322,7 @@ namespace DiscoData2API_Priv.Controllers
             _query_aux = _query_aux.Replace("*", string.Join(",", fields));  //used for debugging
 
             // Add filters to query if they exist
-            string filter_query =string.Empty;
+            string filter_query = string.Empty;
             StringBuilder _filter_query = new();
             if (filters != null && filters.Length > 0)
             {
@@ -364,7 +364,7 @@ namespace DiscoData2API_Priv.Controllers
             {
                 //var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
-                var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;",  query);
+                var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;", query);
                 return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
             }
             catch (Exception ex)
