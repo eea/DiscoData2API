@@ -28,9 +28,9 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Public)",
-        Version = "v1",
+        Version = "v1.0",
         Description = @"Public API for Querying DataHub DiscoData,<br>
-        This API allows you to retrieve a catalog of available SQL-based queries. <br>
+        This API allows you to retrieve a catalog of available Views (SQL-based queries). <br>
         To fetch data, use the unique identifier associated with a specific query.",
     });
 

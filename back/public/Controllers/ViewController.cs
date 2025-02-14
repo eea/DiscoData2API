@@ -11,9 +11,9 @@ namespace DiscoData2API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class QueryController(ILogger<QueryController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
+    public class ViewController(ILogger<ViewController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
     {
-        private readonly ILogger<QueryController> _logger = logger;
+        private readonly ILogger<ViewController> _logger = logger;
         private readonly MongoService _mongoService = mongoService;
         private readonly DremioService _dremioService = dremioService;
         private readonly int _defaultLimit = dremioService._limit;
