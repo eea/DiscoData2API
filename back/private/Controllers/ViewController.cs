@@ -12,7 +12,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ViewController(ILogger<ViewController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
+    public class ViewController(ILogger<ViewController> logger, MongoService mongoService,  DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;

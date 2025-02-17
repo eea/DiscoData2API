@@ -10,10 +10,86 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DremioController(ILogger<ViewController> logger, DremioService dremioService) : ControllerBase
+    public class DremioController(ILogger<ViewController> logger, MongoDatasetService mongoDatasetService, DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
+
+
+
+        [HttpGet("UpdateSchema")]
+        public async Task<ActionResult<string>> UpdateSchema()
+        {
+            var datasets=  await mongoDatasetService.GetAllAsync();
+            foreach (var dt in datasets)
+            {
+                if (dt.Tables == null)
+                    continue;
+
+                if (dt.Tables.Any())
+                {
+                    try
+                    {
+                        foreach (var table in dt.Tables)
+                        {
+                            string query =  string.Format("select * from {0} limit 1", table.DremioRoute);
+                            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
+                            try
+                            {
+                                List<Field> fields = await ExtractFieldsFromQuery(query);
+                                List<DatasetTableField>? table_fields = new List<DatasetTableField>();
+                                foreach (var field in fields)
+                                {
+                                    if (field.Name != "DH_ID")
+                                    {
+                                        table_fields.Add(new DatasetTableField
+                                        {
+                                            Name = field.Name,
+                                            Type = field.Type
+                                        });
+                                    }
+                                }
+                                table.Fields = table_fields;
+                            }
+                            catch (Exception ex)
+                            {
+                                var tt = 4345;
+                            }
+                        }
+
+                    }
+                    catch (Exception ex) 
+                    {
+
+                        var a = 1;
+                    }
+                
+                    
+                }
+
+                await mongoDatasetService.Update(dt);
+                
+            }
+
+            return "OK";
+        }
+
+        private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
+        {
+            try
+            {
+                //var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+                var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;", query);
+                return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.Message);
+
+                throw; // new Exception("Invalid query");
+            }
+        }
 
         [HttpGet("GetSchema")]
         public async Task<ActionResult<string>> GetSchema()
