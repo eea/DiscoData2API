@@ -31,18 +31,18 @@ namespace DiscoData2API.Class
 
         public string BuildFilterString()
         {
-            StringBuilder filter_query = new StringBuilder();
+            StringBuilder filter_query = new();
 
             // Concatenate filters 
             filter_query.AppendFormat(" {0} (", Concat);
             filter_query.AppendFormat("{0} ", FieldName);
 
-            filter_query.AppendFormat("{0} " , Condition);
+            filter_query.AppendFormat("{0} ", Condition);
 
             switch (Condition.ToUpper().Trim())
             {
                 case "BETWEEN":
-                    filter_query.AppendFormat("{0} ", string.Join(" AND " , Values));
+                    filter_query.AppendFormat("{0} ", string.Join(" AND ", Values));
                     break;
                 case "IN":
                     filter_query.AppendFormat("( {0} )", string.Join(", ", Values));

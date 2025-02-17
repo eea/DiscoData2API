@@ -6,11 +6,9 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API_Priv.Class;
-using System.Net.Http;
-using System.Collections.Generic;
 
-namespace DiscoData2API_Priv.Services
+
+namespace DiscoData2API.Class
 {
     public class DremioService
     {
@@ -59,55 +57,10 @@ namespace DiscoData2API_Priv.Services
             }
             _logger.LogInformation($"After query result");
             allResults.Append(']');
-            var action = new FlightAction("Stop Flight Server", new byte[0]);
-            using (var call = _flightClient.DoAction(action))
-            {
-
-            }
-            Console.WriteLine("Action completed.");
-
 
             return allResults.ToString();
         }
 
-        /// <summary>
-        /// Get the fields returned by a query
-        /// </summary>
-        /// <param name="query">The query string</param>
-        /// <param name="cts">The cancellation tocken</param>
-        /// <returns></returns>
-        public async Task<List<Model.Field>> GetSchema(string query, CancellationToken cts)
-        {
-            List<Model.Field> fieldsList = [];
-            var flightInfo = await ConnectArrowFlight(query, cts);
-            if (flightInfo.Item1 != null)
-            {
-                foreach (Field f in flightInfo.Item1.Schema.FieldsList)
-                {
-                    Model.Field target_field = new()
-                    {
-                        Name = f.Name,
-                        Description = "",
-                        Type = f.DataType.TypeId.ToString(),
-                        IsNullable = f.IsNullable
-                    };
-
-                    if (f.HasMetadata)
-                    {
-                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:TYPE_NAME", out string? metatype))
-                            target_field.Type = string.Compare(f.Name, "geometry", true) == 0 ||
-                                                string.Compare(f.Name, "geom", true) == 0 ? "geometry" : metatype;
-
-                        if (f.Metadata.TryGetValue("ARROW:FLIGHT:SQL:PRECISION", out string? metavalue))
-                            target_field.ColumnSize = metavalue;
-                    }
-
-                    fieldsList.Add(target_field);
-                }
-            }
-
-            return fieldsList;
-        }
 
         /// <summary>
         /// Connect to Arrow Flight and get FlightInfo for the query
