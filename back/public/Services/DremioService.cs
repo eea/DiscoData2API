@@ -6,10 +6,9 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API.Class;
 
 
-namespace DiscoData2API.Services
+namespace DiscoData2API.Class
 {
     public class DremioService
     {
@@ -18,13 +17,12 @@ namespace DiscoData2API.Services
         private readonly string? _password;
         private readonly string? _dremioServer;
         private readonly string? _dremioServerAuth;
-        private readonly FlightClient _flightClient;
+        private FlightClient _flightClient;
         public readonly int _limit;
         public readonly int _timeout;
-        private readonly HttpClient _httpClient;
-        
 
-        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger, IHttpClientFactory httpClientFactory)
+
+        public DremioService(IOptions<ConnectionSettingsDremio> dremioSettings, ILogger<DremioService> logger)
         {
             _logger = logger;
             _username = dremioSettings.Value.Username;
@@ -33,111 +31,134 @@ namespace DiscoData2API.Services
             _dremioServerAuth = dremioSettings.Value.DremioServerAuth;
             _limit = dremioSettings.Value.Limit;
             _timeout = dremioSettings.Value.Timeout;
-            _httpClient = httpClientFactory.CreateClient();
             _flightClient = InitializeFlightClient();
-            
         }
 
+
+
+        /// <summary>
+        /// Execute a query on Dremio and return the results as a JSON string
+        /// </summary>
+        /// <param name="query">The query to execute</param>
+        /// <param name="cts">The Cancellation token</param>
+        /// <returns></returns>
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
-            //            try
-            //{
-            // Authenticate and obtain token
-            var token = await Authenticate();
-            var headers = new Metadata { { "authorization", $"Bearer {token}" } };
-
-            // Prepare the FlightDescriptor for the query
-            var descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-            // Fetch FlightInfo for the query
-            var flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
-
+            _logger.LogInformation($"Start execute query");
+            var flightInfo = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"Afer execute ConnectArrowFlight");
 
             var allResults = new StringBuilder("[");
-            await foreach (var batch in StreamRecordBatches(flightInfo,headers))
+            await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2))
             {
                 //Console.WriteLine($"Read batch from flight server: \n {batch}");
                 allResults.Append(ConvertRecordBatchToJson(batch));
-                await Task.Delay(TimeSpan.FromMilliseconds(10),cts);
+                await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
             }
-
-
-            /*
-
-            // Iterate over the returned tickets from FlightInfo
-            foreach (var endpoint in flightInfo.Endpoints)
-            {
-                // Each endpoint provides a ticket for data retrieval
-                var ticket = endpoint.Ticket;
-
-                // Open a stream for the ticket
-                using var stream = _flightClient.GetStream(ticket, headers);
-
-                // Process stream of Arrow RecordBatches
-                while (await stream.ResponseStream.MoveNext(cts))
-                {
-                    var current = await Task.Run(() =>
-                    {
-                        var data = stream.ResponseStream.Current;
-                        return data;
-                    }, cts);
-                    allResults.Add(await Task.Run(() => ConvertRecordBatchToJson(current), cts));
-                }
-            }
-            */
+            _logger.LogInformation($"After query result");
             allResults.Append(']');
+
             return allResults.ToString();
-/*
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while executing query via Arrow Flight.");
-                throw;
-            }
-            finally
-            {
-                // Send clear command to drop all data from the server.
-                var clear_result = _flightClient.DoAction(new FlightAction("clear"));
-                await clear_result.ResponseStream.MoveNext(default);
-            }
-*/
         }
 
-        public async Task<DremioLogin?> ApiLogin()
+
+        /// <summary>
+        /// Connect to Arrow Flight and get FlightInfo for the query
+        /// </summary>
+        /// <param name="query">The query to run</param>
+        /// <param name="cts">The cancellation token</param>
+        /// <returns></returns>
+        private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
+
+            string token = string.Empty;
+            Metadata? headers = null;
+            FlightDescriptor? descriptor = null;
+            FlightInfo? flightInfo = null;
+            //checked first if we can connect to dremio
             try
             {
-                // Prepare login data as JSON
-                var loginData = new { userName = _username, password = _password };
-                var jsonLoginData = JsonSerializer.Serialize(loginData);
-                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json"); // Set content-type here
 
-                // Make the POST request
-                var response = await _httpClient.PostAsync(_dremioServer + "/apiv2/login", content);
-                response.EnsureSuccessStatusCode(); // Throw if not a success status code
-
-                // Parse the response to retrieve the token
-                var responseData = await response.Content.ReadAsStringAsync();
-                var responseJson = JsonSerializer.Deserialize<DremioLogin>(responseData);
-
-                if (responseJson == null || string.IsNullOrEmpty(responseJson.Token))
-                {
-                    _logger.LogWarning("Dremio Token not found in response");
-                    return null;
-                }
-                return responseJson;
+                token = await Authenticate();
+                headers = new Metadata { { "authorization", $"Bearer {token}" } };
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error while getting token from Dremio.");
-                return null;
+                throw;
             }
+            if (string.IsNullOrEmpty(token))
+                throw new Exception("Cannot connect to Dremio server");
+
+
+            //check if _flightClient is still working
+            try
+            {
+                descriptor = FlightDescriptor.CreateCommandDescriptor("select 1");
+                // Fetch FlightInfo for the query
+                flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            }
+            catch
+            {
+                //otherwise create a new client connection
+                _flightClient = InitializeFlightClient();
+            }
+
+            // Prepare the FlightDescriptor for the query
+            descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+
+            // Fetch FlightInfo for the query
+            flightInfo = await _flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+            _logger.LogInformation($"ConnectArrowFlight 4");
+            return (flightInfo, headers);
         }
 
         #region Helpers
 
+        private async Task<string> Authenticate()
+        {
+            try
+            {
+                // Prepare login payload
+                var loginData = new { userName = _username, password = _password };
+                var jsonLoginData = JsonSerializer.Serialize(loginData);
+                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
+
+
+                HttpClientHandler clientHandler = new HttpClientHandler();
+                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+
+                // Pass the handler to httpclient(from you are calling api)
+                // Make the POST request for authentication
+                using var client = new HttpClient(clientHandler);
+                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
+                using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
+                response.EnsureSuccessStatusCode();
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var loginResponse = JsonSerializer.Deserialize<DremioLogin>(responseContent);
+
+                if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
+                {
+                    throw new Exception("Failed to authenticate with Dremio. Token not received.");
+                }
+                return loginResponse.Token;
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while authenticating with Dremio.");
+                throw;
+            }
+        }
+
         private FlightClient InitializeFlightClient()
         {
-            var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+            //var channel = GrpcChannel.ForAddress($"{_dremioServer}");
+
+            var httpHandler = new HttpClientHandler();
+            httpHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            var channel = GrpcChannel.ForAddress($"{_dremioServer}", new GrpcChannelOptions { HttpHandler = httpHandler });
+
             return new FlightClient(channel);
         }
 
@@ -188,51 +209,18 @@ namespace DiscoData2API.Services
                         }
                     }
                 }
-                catch {         
+                catch
+                {
                 }
 
                 data.Add(rowData);
             }
-            
+
 
             return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
         }
 
-        private async Task<string> Authenticate()
-        {
-            try
-            {
-                // Prepare login payload
-                var loginData = new { userName = _username, password = _password };
-                var jsonLoginData = JsonSerializer.Serialize(loginData);
-                var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
-
-                // Make the POST request for authentication
-                using var client = new HttpClient();
-                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
-                var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
-                response.EnsureSuccessStatusCode();
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var loginResponse = JsonSerializer.Deserialize<DremioLogin>(responseContent);
-
-                if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
-                {
-                    throw new Exception("Failed to authenticate with Dremio. Token not received.");
-                }
-
-                return loginResponse.Token;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while authenticating with Dremio.");
-                throw;
-            }
-        }
-
-        #endregion
-
-        public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers )
+        public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers)
         {
             // There might be multiple endpoints hosting part of the data. In simple services,
             // the only endpoint might be the same server we initially queried.
@@ -250,5 +238,7 @@ namespace DiscoData2API.Services
                 }
             }
         }
+
+        #endregion
     }
 }
