@@ -15,13 +15,14 @@ namespace DiscoData2API_Priv.Controllers
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
 
-        [HttpGet("GetSchema")]
-        public async Task<ActionResult<string>> GetSchema()
+        [HttpGet("GetSchema/{origin}")]
+        public async Task<ActionResult<string>> GetSchema(string origin)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                var query = "SELECT DISTINCT TABLE_SCHEMA FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA like '%discodata%'";
+                // var query = "SELECT DISTINCT TABLE_SCHEMA FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA like '%datasets%'";
+                var query = "SELECT DISTINCT TABLE_SCHEMA FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA like '%" + origin + "%'";
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
                 result = FixMalformedJson(result);
 
