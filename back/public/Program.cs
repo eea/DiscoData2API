@@ -3,6 +3,8 @@ using DiscoData2API.Services;
 using DiscoData2API.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using Prometheus;
+using DiscoData2API.Misc;
 
 //needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
@@ -53,9 +55,9 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
+app.UseMetricServer();  
+Metrics.SuppressDefaultMetrics();
+app.UsePrometheusMiddleware();
 app.Run();

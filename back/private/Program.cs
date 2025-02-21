@@ -5,6 +5,8 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
+using Prometheus;
+using DiscoData2API_Priv.Misc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,9 +70,9 @@ app.UseSwaggerUI(options =>
 });
 app.UseResponseCompression();
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
+app.UseMetricServer();  
+Metrics.SuppressDefaultMetrics();
+app.UsePrometheusMiddleware();
 app.Run();
