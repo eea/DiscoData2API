@@ -22,6 +22,7 @@ builder.Services.Configure<ConnectionSettingsMongo>(builder.Configuration.GetSec
 builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
+builder.Services.AddSingleton<MongoDatasetService>();
 
 builder.Services.AddResponseCompression(options =>
 {
