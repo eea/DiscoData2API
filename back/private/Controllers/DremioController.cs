@@ -14,6 +14,8 @@ namespace DiscoData2API_Priv.Controllers
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
+        private readonly ILogger<ViewController> _logger;
+
 
         [HttpGet("UpdateSchema")]
         public async Task<ActionResult<string>> UpdateSchema()
@@ -49,17 +51,16 @@ namespace DiscoData2API_Priv.Controllers
                                 }
                                 table.Fields = table_fields;
                             }
-                            catch (Exception ex)
+                            catch 
                             {
-                                var tt = 4345;
+
                             }
                         }
 
                     }
                     catch (Exception ex) 
                     {
-
-                        var a = 1;
+                        _logger.LogError(ex, $"Error in update schema {dt.ID} ex:{ex.Message}" );
                     }
                 
                     
@@ -90,7 +91,7 @@ namespace DiscoData2API_Priv.Controllers
         }
 
         [HttpGet("GetSchema")]
-        public async Task<ActionResult<string>> GetSchema()
+        public async Task<ActionResult<string>> GetSchema(string origin)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
