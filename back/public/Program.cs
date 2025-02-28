@@ -76,6 +76,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.UseMetricServer();
-Metrics.SuppressDefaultMetrics();
+//Metrics.SuppressDefaultMetrics();
 app.UsePrometheusMiddleware();
 app.Run();
