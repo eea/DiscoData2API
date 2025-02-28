@@ -13,7 +13,7 @@ namespace DiscoData2API.Misc
         // 🚀SEB : Modify this methods to add/remove what prometheus is login
         //--------------------------------------------------------------------------------
         private static readonly Summary RequestDurationSummary = Metrics.CreateSummary(
-            "http_request_duration_total_seconds",
+            "PUBLIC_DATAHUB_API_http_request_duration_total_seconds",
             "Total duration of HTTP requests.",
             new SummaryConfiguration
             {
@@ -24,7 +24,7 @@ namespace DiscoData2API.Misc
         // 🚀SEB : Modify this methods to add/remove what prometheus is login
         //--------------------------------------------------------------------------------
         private static readonly Counter RecordsReturnedCounter = Metrics.CreateCounter(
-            "http_response_records_total",
+            "PUBLIC_DATAHUB_API_http_response_records_total",
             "Total number of records returned in HTTP responses.",
             new CounterConfiguration
             {
@@ -110,12 +110,15 @@ namespace DiscoData2API.Misc
             if (string.IsNullOrWhiteSpace(responseBody))
                 return 0;
 
-            if (responseBody.Trim().StartsWith("["))
+            try
             {
-                return responseBody.Count(c => c == '{');
+                var response_dict = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(responseBody);
+                return response_dict.Count();
             }
-
-            return 1;
+            catch
+            {
+                return 0;
+            }
         }
     }
 

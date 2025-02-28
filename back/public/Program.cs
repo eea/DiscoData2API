@@ -24,6 +24,7 @@ builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSe
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
+builder.Services.UseHttpClientMetrics();
 
 builder.Services.AddResponseCompression(options =>
 {
@@ -75,6 +76,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.UseMetricServer();
-//Metrics.SuppressDefaultMetrics();
+Metrics.SuppressDefaultMetrics();
 app.UsePrometheusMiddleware();
 app.Run();
