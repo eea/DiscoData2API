@@ -17,6 +17,7 @@ namespace DiscoData2API_Priv.Controllers
         private readonly ILogger<ViewController> _logger;
 
 
+        /*
         [HttpGet("UpdateSchema")]
         public async Task<ActionResult<string>> UpdateSchema()
         {
@@ -72,6 +73,7 @@ namespace DiscoData2API_Priv.Controllers
 
             return "OK";
         }
+        */
 
         private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
         {
