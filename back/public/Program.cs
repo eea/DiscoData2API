@@ -5,6 +5,8 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using Prometheus;
 using DiscoData2API.Misc;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
 
 //needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +24,21 @@ builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSe
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
+builder.Services.UseHttpClientMetrics();
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[] { "text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition" };
+});
+builder.Services.Configure<GzipCompressionProviderOptions>
+   (opt =>
+   {
+       opt.Level = CompressionLevel.SmallestSize;
+   }
+);
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient();
@@ -54,10 +71,11 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
 });
 
+app.UseResponseCompression();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-app.UseMetricServer();  
-Metrics.SuppressDefaultMetrics();
+app.UseMetricServer();
+//Metrics.SuppressDefaultMetrics();
 app.UsePrometheusMiddleware();
 app.Run();
