@@ -8,19 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-  <PackageReference Include="Apache.Arrow.Flight" Version="18.0.0" />
+  <PackageReference Include="Apache.Arrow.Flight" Version="19.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
-    <PackageReference Include="MongoDB.Driver" Version="3.0.0" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="7.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="7.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="DiscoData2API_Library">
-      <HintPath>..\classLibrary\bin\Debug\net8.0\DiscoData2API_Library.dll</HintPath>
-    </Reference>
+    <Folder Include="Class\" />
+    <Folder Include="Logs\" />
   </ItemGroup>
 </Project>

@@ -2,3 +2,9 @@
 
 # Default severity for analyzer diagnostics with category 'Naming'
 dotnet_analyzer_diagnostic.category-Naming.severity = none
+
+# CS8604: Posible argumento de referencia nulo
+dotnet_diagnostic.CS8604.severity = none
+
+# CA1848: Usar los delegados LoggerMessage
+dotnet_diagnostic.CA1848.severity = silent

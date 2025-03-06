@@ -1,8 +1,12 @@
 using System.Reflection;
 using DiscoData2API_Priv.Services;
-using DiscoData2API_Library.Class;
+using DiscoData2API_Priv.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
+using Prometheus;
+using DiscoData2API_Priv.Misc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,15 +22,31 @@ builder.Services.Configure<ConnectionSettingsMongo>(builder.Configuration.GetSec
 builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
+builder.Services.AddSingleton<MongoDatasetService>();
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[] { "text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition" };
+});
+builder.Services.Configure<GzipCompressionProviderOptions>
+   (opt =>
+   {
+       opt.Level = CompressionLevel.SmallestSize;
+   }
+);
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Private)",
-        Version = "v1",
-        Description = "API for executing queries. ",
+        Version = "v1.0",
+        Description = @"Private API for Querying S3 Parquets via Dremio. <br>This API allows you to create, read, update, and delete SQL-based queries. <br>Queries are stored in MongoDB with a unique identifier.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -36,24 +56,17 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-}
-
 app.UseSwagger();
 //app.UseSwaggerUI();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-
-
 });
-
+app.UseResponseCompression();
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
+app.UseMetricServer();  
+//Metrics.SuppressDefaultMetrics();
+app.UsePrometheusMiddleware();
 app.Run();

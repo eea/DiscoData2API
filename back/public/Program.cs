@@ -3,6 +3,10 @@ using DiscoData2API.Services;
 using DiscoData2API.Class;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using Prometheus;
+using DiscoData2API.Misc;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
 
 //needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +24,21 @@ builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSe
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
+builder.Services.UseHttpClientMetrics();
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[] { "text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition" };
+});
+builder.Services.Configure<GzipCompressionProviderOptions>
+   (opt =>
+   {
+       opt.Level = CompressionLevel.SmallestSize;
+   }
+);
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient();
@@ -28,8 +47,10 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Public)",
-        Version = "v1",
-        Description = "API for executing queries.",
+        Version = "v1.0",
+        Description = @"Public API for Querying DataHub DiscoData,<br>
+        This API allows you to retrieve a catalog of available Views (SQL-based queries). <br>
+        To fetch data, use the unique identifier associated with a specific query.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -50,10 +71,11 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
 });
 
+app.UseResponseCompression();
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
+app.UseMetricServer();
+//Metrics.SuppressDefaultMetrics();
+app.UsePrometheusMiddleware();
 app.Run();

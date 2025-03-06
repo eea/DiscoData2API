@@ -7,17 +7,11 @@ EXPOSE 5243
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy the class library project file
-COPY ["../classLibrary/DiscoData2API_Library.csproj", "classLibrary/"]
-
 # Copy the project file (relative to the Dockerfile's location in "public")
 COPY ["private/DiscoData2API_Priv.csproj", "private/"]
 
 # Restore dependencies
 RUN dotnet restore "private/DiscoData2API_Priv.csproj"
-
-# Copy the rest of the class library source files
-COPY classLibrary/ ./classLibrary/
 
 # Copy the rest of the application
 COPY . .
@@ -32,8 +26,15 @@ RUN dotnet publish "private/DiscoData2API_Priv.csproj" -c Release -o /app/publis
 
 # Build the final image
 FROM base AS final
+ARG ENVIRONMENT
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENV ASPNETCORE_URLS=http://+:5243
+
+# copy appropriate environment configuration
+COPY Configs/appsettings_$ENVIRONMENT.json  appsettings.json
+
+
 ENTRYPOINT ["dotnet", "DiscoData2API_Priv.dll"]

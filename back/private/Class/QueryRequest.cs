@@ -31,7 +31,7 @@ namespace DiscoData2API.Class
 
         public string BuildFilterString()
         {
-            StringBuilder filter_query = new();
+            StringBuilder filter_query = new ();
 
             // Concatenate filters 
             filter_query.AppendFormat(" {0} (", Concat);

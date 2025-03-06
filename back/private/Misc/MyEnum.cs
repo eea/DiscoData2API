@@ -2,11 +2,6 @@ namespace DiscoData2API_Priv.Misc
 {
     public class MyEnum
     {
-        public enum Collection
-        {
-            discodata_queries,
-        }
-
         public enum JobStatus
         {
             COMPLETED,
