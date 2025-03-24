@@ -235,9 +235,7 @@ namespace DiscoData2API_Priv.Services
                                 rowData[columnName] = doubleArray.Values[i];
                                 break;
                             case Decimal128Array decimal128Array:
-#pragma warning disable CS8601 // Posible asignaci�n de referencia nula
-                                rowData[columnName] = decimal128Array.GetValue(i);
-#pragma warning restore CS8601 // Posible asignaci�n de referencia nula
+                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
                                 break;
                             case StringArray stringArray:
                                 rowData[columnName] = stringArray.GetString(i);
@@ -247,6 +245,9 @@ namespace DiscoData2API_Priv.Services
                                 break;
                             case Date32Array date32Array:
                                 rowData[columnName] = date32Array.Values[i];
+                                break;
+                            case FloatArray floatArray:
+                                rowData[columnName] = floatArray.Values[i];
                                 break;
                             // Add cases for other array types as needed
                             default:
