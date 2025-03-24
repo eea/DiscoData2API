@@ -62,7 +62,7 @@ namespace DiscoData2API.Controllers
         }
 
         /// <summary>
-        /// Executes a query and returns a JSON with the results
+        /// Executes a query with extra filters and returns a JSON with the results
         /// </summary>
         /// <param name="id">The query ID</param>
         /// <param name="request">The JSON body of the request</param>
@@ -86,8 +86,8 @@ namespace DiscoData2API.Controllers
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response> 
-        [HttpPost("{id}")]
-        public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryRequest request)
+        [HttpPost("Filtered/{id}")]
+        public async Task<ActionResult<string>> ExecuteQueryFiltered(string id, [FromBody] QueryRequest request)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
@@ -130,6 +130,65 @@ namespace DiscoData2API.Controllers
                 //Rest of the lines show the query
 
 
+                _logger.LogError(message: ex.Message);
+                string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
+                if (errmsg != null)
+#pragma warning disable CS8600 // Se va a convertir un literal nulo o un posible valor nulo en un tipo que no acepta valores NULL
+                    errmsg = errmsg.Split(['\r', '\n'])
+                        .FirstOrDefault();
+#pragma warning restore CS8600 // Se va a convertir un literal nulo o un posible valor nulo en un tipo que no acepta valores NULL
+
+                return StatusCode(StatusCodes.Status400BadRequest, errmsg);
+            }
+        }
+
+        /// <summary>
+        /// Executes a query and returns a JSON with the results
+        /// </summary>
+        /// <param name="id">The query ID</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Sample request:
+        ///   GET /api/query/672b84ef75e2d0b792658f24
+        /// </remarks>
+        /// <response code="200">Returns the newly created item</response>
+        /// <response code="400">If the query fires an error in the execution</response>
+        /// <response code="404">If the view does not exist</response>
+        /// <response code="408">If the request times out</response>
+        [HttpPost("{id}")]
+        public async Task<ActionResult<string>> ExecuteQuery(string id)
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
+            try
+            {
+                MongoDocument? mongoDoc = await _mongoService.GetFullDocumentById(id);
+
+                if (mongoDoc == null)
+                {
+                    _logger.LogError($"Query with id {id} not found");
+                    throw new ViewNotFoundException();
+                }
+                var result = await _dremioService.ExecuteQuery(mongoDoc.Query, cts.Token);
+
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("Task was canceled due to timeout.");
+                return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
+            }
+            catch (ViewNotFoundException)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
+            }
+            catch (SQLFormattingException ex)
+            {
+                _logger.LogError(ex.Message);
+                return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
+
+            }
+            catch (Exception ex)
+            {
                 _logger.LogError(message: ex.Message);
                 string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
                 if (errmsg != null)
