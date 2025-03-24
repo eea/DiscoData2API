@@ -155,7 +155,7 @@ namespace DiscoData2API.Controllers
         /// <response code="400">If the query fires an error in the execution</response>
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>
-        [HttpPost("{id}")]
+        [HttpGet("{id}")]
         public async Task<ActionResult<string>> ExecuteQuery(string id)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
