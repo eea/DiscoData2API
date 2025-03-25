@@ -5,20 +5,20 @@ DiscoData v2 using DataHub infrastructure
 
 The public and private API share the same first 2 calls. The others are only available in the private API.
 
-#### Get catalog of queries stored in MongoDB - PRIVATE & PUBLIC
+#### Get catalog of views stored in MongoDB - PRIVATE & PUBLIC
 
 ```http
-  GET /api/Query/GetCatalog
+  GET /api/View/GetCatalog
 ```
 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
 | `N/A`     | `N/A`    | **Required**. No parameters required |
 
-#### Execute a query and Fetch data - PRIVATE & PUBLIC
+#### Execute a view and Fetch data - PRIVATE & PUBLIC
 
 ```http
-  POST /api/query/${id}
+  POST /api/View/Filtered/${id}
 ```
 
 | Parameter | Type     | Description                                       |
@@ -27,10 +27,22 @@ The public and private API share the same first 2 calls. The others are only ava
 | `fields`      | `array[string]` | **Optional**. List of Fields the Select query should fetch |
 | `filters`      | `array[string]` | **Optional**. List of filters to fine tune the result of the query  |
 
-#### Create a query - PRIVATE
+#### Execute a view and Fetch data - PRIVATE & PUBLIC
 
 ```http
-  POST /api/createQuery
+  GET /api/View/${id}
+```
+
+| Parameter | Type     | Description                                       |
+| :-------- | :------- | :------------------------------------------------ |
+| `id`      | `string` | **Required**. The Id of mongoDb document to fetch |
+| `fields`      | `array[string]` | **Optional**. List of Fields the Select query should fetch |
+| `filters`      | `array[string]` | **Optional**. List of filters to fine tune the result of the query  |
+
+#### Create a view - PRIVATE
+
+```http
+  POST /api/createView
 ```
 
 | Parameter | Type     | Description                                       |
@@ -40,20 +52,20 @@ The public and private API share the same first 2 calls. The others are only ava
 | `query`      | `string` | **Required**. the SQL query |
 | `fields`      | `array[name:string,type:string,description:description]` | **Required**. List of fields, array of items with the name, the type and the description of each fields  |
 
-#### Read a query stored in MongoDB - PRIVATE
+#### Read a view stored in MongoDB - PRIVATE
 
 ```http
-  GET /api/readQuery/${id}
+  GET /api/readView/${id}
 ```
 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
-| `id`     | `tring`    | **Required**. The mongoDb ID of the query document |
+| `id`     | `string`    | **Required**. The mongoDb ID of the query document |
 
-#### Update a query - PRIVATE API
+#### Update a view - PRIVATE API
 
 ```http
-  POST /api/updateQuery/
+  POST /api/updateView/
 ```
 | Parameter | Type     | Description                                       |
 | :-------- | :------- | :------------------------------------------------ |
@@ -63,10 +75,10 @@ The public and private API share the same first 2 calls. The others are only ava
 | `query`      | `string` | **Optional**. the SQL query |
 | `fields`      | `array[name:string,type:string,description:description]` | **Optional**. List of fields, array of items with the name, the type and the description of each fields  |
 
-#### Delete a query - PRIVATE
+#### Delete a view - PRIVATE
 
 ```http
-  POST /api/deleteQuery/${id}
+  POST /api/deleteView/${id}
 ```
 
 | Parameter | Type     | Description                                       |
