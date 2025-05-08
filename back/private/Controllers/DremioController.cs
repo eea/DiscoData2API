@@ -17,104 +17,37 @@ namespace DiscoData2API_Priv.Controllers
         private readonly ILogger<ViewController> _logger;
 
 
-        /*
-        [HttpGet("UpdateSchema")]
-        public async Task<ActionResult<string>> UpdateSchema()
-        {
-            var datasets=  await mongoDatasetService.GetAllAsync();
-            foreach (var dt in datasets)
-            {
-                if (dt.Tables == null)
-                    continue;
-
-                if (dt.Tables.Any())
-                {
-                    try
-                    {
-                        foreach (var table in dt.Tables)
-                        {
-                            string query =  string.Format("select * from {0} limit 1", table.DremioRoute);
-                            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
-                            try
-                            {
-                                List<Field> fields = await ExtractFieldsFromQuery(query);
-                                List<DatasetTableField>? table_fields = new List<DatasetTableField>();
-                                foreach (var field in fields)
-                                {
-                                    if (field.Name != "DH_ID")
-                                    {
-                                        table_fields.Add(new DatasetTableField
-                                        {
-                                            Name = field.Name,
-                                            Type = field.Type
-                                        });
-                                    }
-                                }
-                                table.Fields = table_fields;
-                            }
-                            catch 
-                            {
-
-                            }
-                        }
-
-                    }
-                    catch (Exception ex) 
-                    {
-                        _logger.LogError(ex, $"Error in update schema {dt.ID} ex:{ex.Message}" );
-                    }
-                
-                    
-                }
-
-                await mongoDatasetService.Update(dt);
-                
-            }
-
-            return "OK";
-        }
-        */
-
-        private async Task<List<Field>> ExtractFieldsFromQuery(string? query)
-        {
-            try
-            {
-                //var temp_table_name = string.Format("\"Local S3\".\"datahub-pre-01\".discodata.\"temp_{0}\"", System.Guid.NewGuid().ToString());
-                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
-                var queryColumnsFlight = string.Format(@" select * from ({0} ) limit 1;", query);
-                return await dremioService.GetSchema(queryColumnsFlight, cts.Token);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex.Message);
-
-                throw; // new Exception("Invalid query");
-            }
-        }
-
         [HttpGet("GetSchema")]
         public async Task<ActionResult<string>> GetSchema(string origin)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
             {
-                // var query = "SELECT DISTINCT TABLE_SCHEMA FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA like '%datasets%'";
                 var query = "SELECT DISTINCT TABLE_SCHEMA FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA like '%" + origin + "%'";
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
                 result = FixMalformedJson(result);
 
-                List<DremioSchema> schemaList = JsonSerializer.Deserialize<List<DremioSchema>>(result) ?? new List<DremioSchema>();
+                List<DremioRawSchema> rawSchemaList = JsonSerializer.Deserialize<List<DremioRawSchema>>(result) ?? new List<DremioRawSchema>();
 
-                if (schemaList == null)
+                if (rawSchemaList == null)
                 {
                     return NotFound("No schema found.");
                 }
 
+                List<DremioSchema> schemaList = new List<DremioSchema>();
+                foreach (var item in rawSchemaList)
+                {
+                    schemaList.Add(new DremioSchema()
+                    {
+                        SchemaName = item.SchemaName,
+                        Schema = item.TABLE_SCHEMA
+                    });
+                }
+
                 foreach (var schema in schemaList)
                 {
-                    var schemaPathItem = schema.TableSchema.Split('.');
+                    var schemaPathItem = schema.Schema.Split('.');
                     schema.SchemaName = schemaPathItem[schemaPathItem.Length - 2];
-                    // table.Columns = await GetColumn(table.TableSchema);   //takes too much time to get all columns
                 }
 
                 return Ok(schemaList);
@@ -134,8 +67,19 @@ namespace DiscoData2API_Priv.Controllers
             {
                 var query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA = '" + schema + "'";
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
-                var tables = JsonSerializer.Deserialize<List<DremioTable>>(result) ?? new List<DremioTable>();
-                return tables;
+                var rawTableList = JsonSerializer.Deserialize<List<DremioRawTable>>(result) ?? new List<DremioRawTable>();
+
+                List<DremioTable> tableList = new List<DremioTable>();
+                foreach (var item in rawTableList)
+                {
+                    tableList.Add(new DremioTable()
+                    {
+                        TableName = item.TABLE_NAME
+                    });
+                }
+
+
+                return tableList;
             }
             catch (Exception ex)
             {
