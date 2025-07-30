@@ -26,4 +26,4 @@ jobs:
           git config --global user.email "github-actions@github.com"
           
           git remote add eea git@github.com:eea/DiscoData2API.git
-          git push eea main
+          git push --force eea main
