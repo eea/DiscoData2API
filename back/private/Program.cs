@@ -10,6 +10,17 @@ using DiscoData2API_Priv.Misc;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Allow CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy => policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+    );
+});
+
 // Configure Serilog for file logging
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -54,6 +65,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+app.UseCors("AllowReactApp");
 
 
 app.UseSwagger();
