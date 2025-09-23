@@ -17,6 +17,9 @@ namespace DiscoData2API_Priv.Model
         [BsonElement("name")]
         public string Name { get; set; } = null!;
 
+        [BsonElement("catalog")]
+        public string? Catalog { get; set; }
+
         [BsonElement("description")]
         public string Description { get; set; } = null!;
 

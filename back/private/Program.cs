@@ -67,13 +67,15 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseCors("AllowReactApp");
-
+app.UseStaticFiles();
 
 app.UseSwagger();
 //app.UseSwaggerUI();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+    options.InjectStylesheet("/swagger-custom.css");
+    options.InjectJavascript("/swagger-custom.js");
 });
 app.UseResponseCompression();
 app.UseHttpsRedirection();
