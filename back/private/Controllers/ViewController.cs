@@ -46,7 +46,8 @@ namespace DiscoData2API_Priv.Controllers
                     Description = request.Description,
                     Fields = ExtractFieldsFromQuery(request.Query).Result,
                     IsActive = true,
-                    Date = DateTime.Now
+                    Date = DateTime.Now,
+                    Catalog = request.Catalog
                 });
             }
             catch (OperationCanceledException)
@@ -138,6 +139,7 @@ namespace DiscoData2API_Priv.Controllers
                 doc.Fields = await ExtractFieldsFromQuery(request.Query);
                 doc.IsActive = true;
                 doc.Date = DateTime.Now;
+                if (!string.IsNullOrEmpty(request.Catalog)) doc.Catalog = request.Catalog;
 
                 var updatedDocument = await mongoService.UpdateAsync(id, doc, hasId);
                 if (updatedDocument == null)
@@ -209,21 +211,33 @@ namespace DiscoData2API_Priv.Controllers
         /// <summary>
         /// Get catalog of queries (MongoDB)
         /// </summary>
-        /// <param name="userAdded">The username that creatde the query</param>
+        /// <param name="userAdded">The username that created the query</param>
+        /// <param name="catalog">The catalog to filter by</param>
         /// <returns>Return a list of MongoDocument class</returns>
-        /// <response code="200">Returns the catalogue</response>        
+        /// <response code="200">Returns the catalogue</response>
         /// <response code="408">If the request times out</response>
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded)
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded, [FromQuery] string? catalog)
         {
             try
             {
-                if (string.IsNullOrEmpty(userAdded))
+                // Handle different filtering combinations
+                if (!string.IsNullOrEmpty(userAdded) && !string.IsNullOrEmpty(catalog))
+                {
+                    return await mongoService.GetAllByUserAndCatalogAsync(userAdded, catalog);
+                }
+                else if (!string.IsNullOrEmpty(userAdded))
+                {
+                    return await mongoService.GetAllByUserAsync(userAdded);
+                }
+                else if (!string.IsNullOrEmpty(catalog))
+                {
+                    return await mongoService.GetAllByCatalogAsync(catalog);
+                }
+                else
                 {
                     return await mongoService.GetAllAsync();
                 }
-
-                return await mongoService.GetAllByUserAsync(userAdded);
             }
             catch (OperationCanceledException)
             {
@@ -430,6 +444,8 @@ namespace DiscoData2API_Priv.Controllers
         }
 
         #endregion
+
+
 
     }
 }

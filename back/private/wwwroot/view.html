@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Explorer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            color: white;
+            padding: 20px 30px;
+        }
+        .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.8em;
+            font-weight: 500;
+        }
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        .content {
+            padding: 30px;
+        }
+        .view-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.85em;
+            margin-bottom: 2px;
+        }
+        .info-value {
+            color: #333;
+            font-size: 0.95em;
+        }
+        .execute-section {
+            margin-bottom: 30px;
+        }
+        .execute-button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+        .execute-button:hover {
+            background: #357abd;
+        }
+        .execute-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results-section {
+            margin-top: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .results-table th,
+        .results-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            position: sticky;
+            top: 0;
+        }
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .back-button:hover {
+            background: #545b62;
+        }
+        .query-display {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .results-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="viewName">Loading...</h1>
+            <p id="viewDescription">Loading view details...</p>
+        </div>
+        <div class="content">
+           
+            <div class="view-info">
+                <div class="info-item">
+                    <div class="info-label">Created by</div>
+                    <div class="info-value" id="viewUser">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Catalog</div>
+                    <div class="info-value" id="viewCatalog">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Version</div>
+                    <div class="info-value" id="viewVersion">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Created</div>
+                    <div class="info-value" id="viewDate">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Fields</div>
+                    <div class="info-value" id="viewFields">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value" id="viewStatus">Loading...</div>
+                </div>
+            </div>
+
+            <div class="execute-section">
+                <button class="execute-button" onclick="executeQuery()" id="executeBtn" style="display: none;">
+                    Re-execute Query (Limit 10 rows)
+                </button>
+
+                <div class="query-display" id="queryDisplay">
+                    <strong>Query:</strong><br>Loading query...
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: block;">
+                Executing query...
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+
+            <div id="results" class="results-section" style="display: none;">
+                <div class="results-info">
+                    Showing up to 10 rows. Use the API for full results.
+                </div>
+                <div id="resultsTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentView = null;
+        let viewId = null;
+
+        // Get view ID from URL parameters
+        function getViewIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        // Load view details
+        async function loadViewDetails(id) {
+            try {
+                const response = await fetch(`/api/View/Get/${id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const view = await response.json();
+                currentView = view;
+                displayViewDetails(view);
+                return view;
+            } catch (error) {
+                console.error('Error loading view details:', error);
+                document.getElementById('error').textContent = `Error loading view: ${error.message}`;
+                document.getElementById('error').style.display = 'block';
+                throw error;
+            }
+        }
+
+        // Display view details in the UI
+        function displayViewDetails(view) {
+            document.getElementById('viewName').textContent = view.name || 'Unnamed View';
+            document.getElementById('viewDescription').textContent = view.description || 'No description available';
+            document.getElementById('viewUser').textContent = view.userAdded || 'Unknown';
+            document.getElementById('viewCatalog').textContent = view.catalog || 'Default';
+            document.getElementById('viewVersion').textContent = view.version || 'N/A';
+            document.getElementById('viewDate').textContent = view.date ? new Date(view.date).toLocaleString() : 'N/A';
+            document.getElementById('viewFields').textContent = `${view.fields?.length || 0} columns`;
+            document.getElementById('viewStatus').textContent = view.isActive ? 'Active' : 'Inactive';
+            document.getElementById('queryDisplay').innerHTML = `<strong>Query:</strong><br>${view.query || 'No query available'}`;
+
+            // Update page title
+            document.title = `View Explorer - ${view.name || 'Unnamed View'}`;
+        }
+
+        // Execute the query
+        async function executeQuery() {
+            if (!currentView || !viewId) {
+                alert('No view loaded');
+                return;
+            }
+
+            const executeBtn = document.getElementById('executeBtn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+            const resultsTable = document.getElementById('resultsTable');
+
+            executeBtn.disabled = true;
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+
+            try {
+                // Use the Filtered endpoint with limit 10
+                const response = await fetch(`/api/View/Filtered/${viewId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fields: ['*'],
+                        limit: 10,
+                        filters: []
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (err) {
+                console.error('Error executing query:', err);
+                error.textContent = `Error executing query: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.style.display = 'inline-block'; // Show the re-execute button
+                loading.style.display = 'none';
+            }
+        }
+
+        // Display query results
+        function displayResults(data) {
+            const resultsTable = document.getElementById('resultsTable');
+            const results = document.getElementById('results');
+
+            if (!data || data.length === 0) {
+                resultsTable.innerHTML = '<p>No results found.</p>';
+                results.style.display = 'block';
+                return;
+            }
+
+            // Create table
+            const table = document.createElement('table');
+            table.className = 'results-table';
+
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+
+            const firstRow = data[0];
+            Object.keys(firstRow).forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                Object.values(row).forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value !== null ? value : 'NULL';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            resultsTable.innerHTML = '';
+            resultsTable.appendChild(table);
+            results.style.display = 'block';
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            viewId = getViewIdFromUrl();
+            if (viewId) {
+                loadViewDetails(viewId).then(() => {
+                    // Automatically execute the query after loading view details
+                    executeQuery();
+                });
+            } else {
+                document.getElementById('error').textContent = 'No view ID provided';
+                document.getElementById('error').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
