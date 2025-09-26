@@ -143,6 +143,42 @@
             white-space: pre-wrap;
             overflow-x: auto;
         }
+        .parameters-section {
+            background: #e7f3ff;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .parameters-section h3 {
+            margin: 0 0 15px 0;
+            color: #0056b3;
+            font-size: 1.1em;
+        }
+        .parameter-input {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .parameter-input label {
+            font-weight: bold;
+            min-width: 120px;
+            font-size: 0.9em;
+        }
+        .parameter-input input, .parameter-input select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.9em;
+            flex: 1;
+            max-width: 300px;
+        }
+        .parameter-input .param-info {
+            font-size: 0.8em;
+            color: #666;
+            font-style: italic;
+        }
         .results-info {
             margin-top: 15px;
             padding: 10px;
@@ -195,6 +231,11 @@
 
                 <div class="query-display" id="queryDisplay">
                     <strong>Query:</strong><br>Loading query...
+                </div>
+
+                <div id="parametersSection" style="display: none;" class="parameters-section">
+                    <h3>Parameters</h3>
+                    <div id="parametersContainer"></div>
                 </div>
             </div>
 
@@ -255,6 +296,17 @@
             document.getElementById('viewStatus').textContent = view.isActive ? 'Active' : 'Inactive';
             document.getElementById('queryDisplay').innerHTML = `<strong>Query:</strong><br>${view.query || 'No query available'}`;
 
+            // Show parameters section if view has parameters
+            const parametersSection = document.getElementById('parametersSection');
+            const parametersContainer = document.getElementById('parametersContainer');
+
+            if (view.parameters && view.parameters.length > 0) {
+                parametersContainer.innerHTML = view.parameters.map(param => generateParameterInput(param)).join('');
+                parametersSection.style.display = 'block';
+            } else {
+                parametersSection.style.display = 'none';
+            }
+
             // Update page title
             document.title = `View Explorer - ${view.name || 'Unnamed View'}`;
         }
@@ -278,21 +330,65 @@
             results.style.display = 'none';
 
             try {
-                // Use the Filtered endpoint with limit 10
-                const response = await fetch(`/api/View/Filtered/${viewId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        fields: ['*'],
-                        limit: 10,
-                        filters: []
-                    })
-                });
+                let response;
+
+                // Check if view has parameters
+                if (currentView.parameters && currentView.parameters.length > 0) {
+                    // Collect parameter values
+                    const parameters = {};
+                    let hasError = false;
+
+                    for (const param of currentView.parameters) {
+                        const inputId = `param_${param.name}`;
+                        const input = document.getElementById(inputId);
+                        const value = input ? input.value.trim() : '';
+
+                        if (param.required && !value) {
+                            if (input) input.style.borderColor = 'red';
+                            hasError = true;
+                            continue;
+                        } else {
+                            if (input) input.style.borderColor = '';
+                        }
+
+                        if (value) {
+                            parameters[param.name] = value;
+                        }
+                    }
+
+                    if (hasError) {
+                        throw new Error('Please fill in all required parameters');
+                    }
+
+                    // Use parameterized endpoint
+                    response = await fetch(`/api/View/ExecuteWithParameters/${viewId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            parameters: parameters,
+                            limit: 10
+                        })
+                    });
+                } else {
+                    // Use regular Filtered endpoint for non-parameterized views
+                    response = await fetch(`/api/View/Filtered/${viewId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fields: ['*'],
+                            limit: 10,
+                            filters: []
+                        })
+                    });
+                }
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
                 const data = await response.json();
@@ -360,14 +456,69 @@
             viewId = getViewIdFromUrl();
             if (viewId) {
                 loadViewDetails(viewId).then(() => {
-                    // Automatically execute the query after loading view details
-                    executeQuery();
+                    // Only auto-execute for non-parameterized views
+                    if (!currentView.parameters || currentView.parameters.length === 0) {
+                        executeQuery();
+                    } else {
+                        // Show execute button for parameterized views
+                        document.getElementById('executeBtn').style.display = 'inline-block';
+                        document.getElementById('executeBtn').textContent = 'Execute Query';
+                        document.getElementById('loading').style.display = 'none';
+                    }
                 });
             } else {
                 document.getElementById('error').textContent = 'No view ID provided';
                 document.getElementById('error').style.display = 'block';
             }
         });
+
+        // Generate parameter input HTML
+        function generateParameterInput(param) {
+            let inputElement = '';
+
+            if (param.allowedValues && param.allowedValues.length > 0) {
+                // Dropdown for allowed values
+                inputElement = `
+                    <select id="param_${param.name}" ${param.required ? 'required' : ''}>
+                        ${!param.required ? '<option value="">-- Optional --</option>' : ''}
+                        ${param.allowedValues.map(value =>
+                            `<option value="${escapeHtml(value)}" ${param.defaultValue === value ? 'selected' : ''}>
+                                ${escapeHtml(value)}
+                            </option>`
+                        ).join('')}
+                    </select>
+                `;
+            } else {
+                // Text input
+                inputElement = `
+                    <input type="text"
+                           id="param_${param.name}"
+                           placeholder="${param.defaultValue || 'Enter ' + param.name}"
+                           value="${param.defaultValue || ''}"
+                           ${param.required ? 'required' : ''}>
+                `;
+            }
+
+            return `
+                <div class="parameter-input">
+                    <label for="param_${param.name}">
+                        ${escapeHtml(param.name)}${param.required ? '*' : ''}:
+                    </label>
+                    ${inputElement}
+                    <span class="param-info">
+                        ${escapeHtml(param.description || '')}
+                        ${param.type ? `(${param.type})` : ''}
+                    </span>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 </body>
 </html>

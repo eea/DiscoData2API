@@ -12,7 +12,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ViewController(ILogger<ViewController> logger, MongoService mongoService, DremioService dremioService) : ControllerBase
+    public class ViewController(ILogger<ViewController> logger, MongoService mongoService, DremioService dremioService, ParameterSubstitutionService parameterService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
@@ -45,6 +45,7 @@ namespace DiscoData2API_Priv.Controllers
                     Version = request.Version,
                     Description = request.Description,
                     Fields = ExtractFieldsFromQuery(request.Query).Result,
+                    Parameters = request.Parameters,
                     IsActive = true,
                     Date = DateTime.Now,
                     Catalog = request.Catalog
@@ -137,6 +138,7 @@ namespace DiscoData2API_Priv.Controllers
                 if (!string.IsNullOrEmpty(request.Version)) doc.Version = request.Version;
                 doc.Description = request.Description;
                 doc.Fields = await ExtractFieldsFromQuery(request.Query);
+                doc.Parameters = request.Parameters;
                 doc.IsActive = true;
                 doc.Date = DateTime.Now;
                 if (!string.IsNullOrEmpty(request.Catalog)) doc.Catalog = request.Catalog;
@@ -371,6 +373,90 @@ namespace DiscoData2API_Priv.Controllers
                 logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
 
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(message: ex.Message);
+                string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
+                return StatusCode(StatusCodes.Status400BadRequest, errmsg);
+            }
+        }
+
+        /// <summary>
+        /// Executes a parameterized query and returns a JSON with the results
+        /// </summary>
+        /// <param name="id">The query ID</param>
+        /// <param name="request">The JSON body containing parameters and optional filters</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Sample request:
+        ///
+        ///     POST /api/ViewController/ExecuteWithParameters/672b84ef75e2d0b792658f24
+        ///     {
+        ///         "parameters": {
+        ///             "country_code": "ES",
+        ///             "year": "2023"
+        ///         },
+        ///         "fields": ["column1", "column2"],
+        ///         "filters": [
+        ///             {"Concat": "AND", "FieldName":"Column4", "Condition":"=", "Values": ["'Value1'"] }
+        ///         ],
+        ///         "limit": 100
+        ///     }
+        ///
+        /// </remarks>
+        /// <response code="200">Returns the query results</response>
+        /// <response code="400">If the query fires an error or parameters are invalid</response>
+        /// <response code="404">If the view does not exist</response>
+        /// <response code="408">If the request times out</response>
+        [HttpPost("ExecuteWithParameters/{id}")]
+        public async Task<ActionResult<string>> ExecuteQueryWithParameters(string id, [FromBody] QueryExecutionRequest request)
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+            try
+            {
+                MongoDocument? mongoDoc = await mongoService.GetFullDocumentById(id);
+
+                if (mongoDoc == null)
+                {
+                    logger.LogError($"Query with id {id} not found");
+                    throw new ViewNotFoundException();
+                }
+
+                // Substitute parameters in the base query
+                var substitutedQuery = parameterService.SubstituteParameters(
+                    mongoDoc.Query,
+                    mongoDoc.Parameters,
+                    request.Parameters
+                );
+
+                // Apply additional filters if provided
+                if (request.Fields != null || request.Filters != null || request.Limit != null)
+                {
+                    substitutedQuery = UpdateQueryString(substitutedQuery, request.Fields, request.Limit, request.Filters);
+                }
+
+                var result = await dremioService.ExecuteQuery(substitutedQuery, cts.Token);
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogError("Task was canceled due to timeout.");
+                return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
+            }
+            catch (ViewNotFoundException)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, $"Cannot find view {id}");
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex.Message);
+                return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
+            }
+            catch (SQLFormattingException ex)
+            {
+                logger.LogError(ex.Message);
+                return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
             }
             catch (Exception ex)
             {
