@@ -31,6 +31,9 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 builder.Services.Configure<ConnectionSettingsMongo>(builder.Configuration.GetSection("MongoSettings"));
 builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
+builder.Services.AddSingleton<FlightClientPool>();
+builder.Services.AddSingleton<QueryThrottlingService>();
+builder.Services.AddSingleton<CircuitBreakerService>();
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddScoped<ParameterSubstitutionService>();

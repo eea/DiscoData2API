@@ -360,8 +360,8 @@
                         throw new Error('Please fill in all required parameters');
                     }
 
-                    // Use parameterized endpoint
-                    response = await fetch(`/api/View/ExecuteWithParameters/${viewId}`, {
+                    // Use unified Execute endpoint with parameters
+                    response = await fetch(`/api/View/Execute/${viewId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -372,8 +372,8 @@
                         })
                     });
                 } else {
-                    // Use regular Filtered endpoint for non-parameterized views
-                    response = await fetch(`/api/View/Filtered/${viewId}`, {
+                    // Use unified Execute endpoint without parameters
+                    response = await fetch(`/api/View/Execute/${viewId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
