@@ -10,7 +10,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [ApiExplorerSettings(IgnoreApi = true)]
+    [ApiExplorerSettings(IgnoreApi = false)]
     public class DremioController(ILogger<ViewController> logger, DremioService dremioService) : ControllerBase
     {
         private readonly int _defaultLimit = dremioService._limit;
