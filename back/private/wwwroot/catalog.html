@@ -131,6 +131,67 @@
             color: #666;
             font-style: italic;
         }
+        .parameter-badge {
+            background: #17a2b8;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .parameter-badge::before {
+            content: "⚙";
+            font-size: 10px;
+        }
+        .parameters-section {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .parameters-section h4 {
+            margin: 0 0 10px 0;
+            color: #0056b3;
+            font-size: 14px;
+        }
+        .parameter-input {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .parameter-input label {
+            font-weight: bold;
+            min-width: 120px;
+            font-size: 12px;
+        }
+        .parameter-input input, .parameter-input select {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .parameter-input .param-info {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+        .btn-execute-params {
+            background: #28a745;
+            color: white;
+        }
+        .btn-execute-params:hover {
+            background: #218838;
+        }
+        .btn-execute-params:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -196,9 +257,32 @@
                 return;
             }
 
-            container.innerHTML = views.map(view => `
+            // Debug: log the first view to see the structure
+            if (views.length > 0) {
+                console.log('Sample view object:', views[0]);
+                console.log('Parameters property:', views[0].parameters);
+            }
+
+            container.innerHTML = views.map(view => {
+                // Debug individual view - check different possible property names
+                console.log(`View "${view.name}":`, {
+                    parameters: view.parameters,
+                    Parameters: view.Parameters,
+                    allKeys: Object.keys(view)
+                });
+
+                // Try both lowercase and uppercase property names
+                const params = view.parameters || view.Parameters || [];
+                const hasParameters = params && params.length > 0;
+                const parameterCount = hasParameters ? params.length : 0;
+                const viewId = view.id || view._id;
+
+                return `
                 <div class="view-card">
-                    <div class="view-title">${escapeHtml(view.name || 'Unnamed View')}</div>
+                    <div class="view-title">
+                        ${escapeHtml(view.name || 'Unnamed View')}
+                        ${hasParameters ? `<span class="parameter-badge">${parameterCount} param${parameterCount > 1 ? 's' : ''}</span>` : ''}
+                    </div>
                     <div class="view-description">${escapeHtml(view.description || 'No description available')}</div>
                     <div class="view-meta">
                         <div><strong>User:</strong> ${escapeHtml(view.userAdded || 'Unknown')}</div>
@@ -206,20 +290,20 @@
                         <div><strong>Version:</strong> ${escapeHtml(view.version || 'N/A')}</div>
                         <div><strong>Date:</strong> ${formatDate(view.date)}</div>
                         <div><strong>Active:</strong> ${view.isActive ? 'Yes' : 'No'}</div>
-                    </div>
-                    <div class="view-actions">
-                        <a href="/swagger/index.html#/ViewController/get_api_ViewController_{id}"
-                           class="btn btn-primary"
-                           target="_blank"
-                           onclick="this.href=this.href.replace('{id}', '${view.id || view._id}')">
-                           Execute
-                        </a>
-                        <button class="btn btn-secondary" onclick="showQuery('${view.id || view._id}')">
-                            View Query
-                        </button>
+                        ${hasParameters ? `<div><strong>Parameters:</strong> ${params.map(p => escapeHtml(p.name || p.Name || 'unnamed')).join(', ')}</div>` : ''}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
+
+            // Add click handlers to view cards
+            setTimeout(() => {
+                document.querySelectorAll('.view-card').forEach((card, index) => {
+                    const viewId = views[index].id || views[index]._id;
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', () => openViewDetails(viewId));
+                });
+            }, 0);
         }
 
         function escapeHtml(text) {
@@ -243,9 +327,9 @@
             loadViews();
         }
 
-        function showQuery(viewId) {
-            // This would ideally fetch the full view details including the query
-            alert(`Query details for view ${viewId} - Feature to be implemented`);
+        function openViewDetails(viewId) {
+            // Navigate to the detailed view page
+            window.location.href = `/view.html?id=${encodeURIComponent(viewId)}`;
         }
 
         // Load views when the page loads
@@ -260,6 +344,7 @@
                 loadViews(userAdded || null);
             }
         });
+
     </script>
 </body>
 </html>

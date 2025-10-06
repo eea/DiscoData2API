@@ -39,6 +39,9 @@ public class MongoDocument
     [BsonElement("fields")]
     public List<Field>? Fields { get; set; } = null!;
 
+    [BsonElement("parameters")]
+    public List<ViewParameter>? Parameters { get; set; } = null!;
+
 }
 
 public class MongoPublicDocument
@@ -96,4 +99,25 @@ public class Field
     [BsonIgnoreIfNull]
     [BsonElement("description")]
     public string Description { get; set; } = null!;
+}
+
+public class ViewParameter
+{
+    [BsonElement("name")]
+    public string Name { get; set; } = null!;
+
+    [BsonElement("type")]
+    public string Type { get; set; } = "string";
+
+    [BsonElement("description")]
+    public string? Description { get; set; }
+
+    [BsonElement("required")]
+    public bool Required { get; set; } = true;
+
+    [BsonElement("defaultValue")]
+    public string? DefaultValue { get; set; }
+
+    [BsonElement("allowedValues")]
+    public List<string>? AllowedValues { get; set; }
 }

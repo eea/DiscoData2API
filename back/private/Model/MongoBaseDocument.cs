@@ -8,5 +8,6 @@ namespace DiscoData2API_Priv.Model
         public required string Query { get; set; }
         public string? UserAdded { get; set; }
         public string? Version { get; set; }
+        public List<ViewParameter>? Parameters { get; set; }
     }
 }
