@@ -58,5 +58,35 @@ namespace DiscoData2API.Class
 
     }
 
+    /// <summary>
+    /// Unified request class for executing queries with optional parameters, filters, and fields selection
+    /// </summary>
+    public class QueryExecutionRequest
+    {
+        /// <summary>
+        /// Query parameters for substitution in parameterized queries
+        /// </summary>
+        [DefaultValue(typeof(Dictionary<string, object>), "")]
+        public Dictionary<string, object>? Parameters { get; set; }
+
+        /// <summary>
+        /// Fields to select from the query results
+        /// </summary>
+        [DefaultValue(typeof(string[]), "")]
+        public string[]? Fields { get; set; }
+
+        /// <summary>
+        /// Additional filters to apply to the query
+        /// </summary>
+        [DefaultValue(typeof(FilterDefinition[]), "")]
+        public FilterDefinition[]? Filters { get; set; }
+
+        /// <summary>
+        /// Maximum number of rows to return
+        /// </summary>
+        [DefaultValue(150)]
+        public int? Limit { get; set; }
+    }
+
 
 }
