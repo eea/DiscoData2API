@@ -46,6 +46,30 @@ namespace DiscoData2API_Priv.Services
             }
         }
 
+        public async Task<List<MongoDocument>> GetAllByCatalogAsync(string catalog)
+        {
+            try
+            {
+                return await _collection.Find(p => p.IsActive && p.Catalog == catalog).SortByDescending(p => p.Date).ToListAsync();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<List<MongoDocument>> GetAllByUserAndCatalogAsync(string userAdded, string catalog)
+        {
+            try
+            {
+                return await _collection.Find(p => p.IsActive && p.UserAdded == userAdded && p.Catalog == catalog).SortByDescending(p => p.Date).ToListAsync();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         /// <summary>
         /// Create a document
         /// </summary>
@@ -139,6 +163,7 @@ namespace DiscoData2API_Priv.Services
                 myDocument.UserAdded = !string.IsNullOrEmpty(newDocument.UserAdded) ? newDocument.UserAdded : myDocument.UserAdded;
                 myDocument.Date = newDocument.Date ?? myDocument.Date;
                 myDocument.ID = newDocument.ID;
+                myDocument.Catalog = !string.IsNullOrEmpty(newDocument.Catalog) ? newDocument.Catalog : myDocument.Catalog;
 
                 // Replace the updated document
                 if (has_uuid) 
@@ -196,6 +221,38 @@ namespace DiscoData2API_Priv.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error while getting document with mongo id {id}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Bulk update all documents to add catalog field with default value
+        /// </summary>
+        /// <param name="catalogValue">The catalog value to set for all existing documents</param>
+        /// <returns>Number of documents updated</returns>
+        public async Task<long> BulkUpdateCatalogAsync(string catalogValue)
+        {
+            try
+            {
+                // Update all active documents that don't have a catalog field or have null/empty catalog
+                var filter = Builders<MongoDocument>.Filter.And(
+                    Builders<MongoDocument>.Filter.Eq(p => p.IsActive, true),
+                    Builders<MongoDocument>.Filter.Or(
+                        Builders<MongoDocument>.Filter.Exists(p => p.Catalog, false),
+                        Builders<MongoDocument>.Filter.Eq(p => p.Catalog, null),
+                        Builders<MongoDocument>.Filter.Eq(p => p.Catalog, "")
+                    )
+                );
+
+                var update = Builders<MongoDocument>.Update.Set(p => p.Catalog, catalogValue);
+                var result = await _collection.UpdateManyAsync(filter, update);
+
+                _logger.LogInformation($"Updated {result.ModifiedCount} documents with catalog value: {catalogValue}");
+                return result.ModifiedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error while bulk updating catalog field to {catalogValue}");
                 throw;
             }
         }

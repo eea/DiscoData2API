@@ -19,10 +19,14 @@ out/
 .env
 .env.*.local
 
+# Claude AI
+CLAUDE.md
+
 # Visual Studio Specific
 .vscode/
 .vscode/*.*           # VS Code workspace settings
 .idea/                # Rider/IntelliJ IDE settings
+.vs
 *.code-workspace
 *.sln.cache
 .vscode/settings.json
