@@ -69,7 +69,7 @@ namespace DiscoData2API_Priv.Services
 
                 try
                 {
-                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    var action = new FlightAction("Stop Flight Server", []);
                     using var call = flightClient.DoAction(action);
                 }
                 catch (Exception ex)
@@ -158,7 +158,7 @@ namespace DiscoData2API_Priv.Services
                 // Clean up flight connection
                 try
                 {
-                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    var action = new FlightAction("Stop Flight Server", []);
                     using var call = flightClient.DoAction(action);
                 }
                 catch (Exception ex)
@@ -336,8 +336,10 @@ namespace DiscoData2API_Priv.Services
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
 
-                HttpClientHandler clientHandler = new HttpClientHandler();
-                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+                HttpClientHandler clientHandler = new()
+                {
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
+                };
 
                 // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
@@ -438,37 +440,19 @@ namespace DiscoData2API_Priv.Services
                     {
                         string columnName = column.field.Name;
 
-                        switch (column.array)
+                        rowData[columnName] = column.array switch
                         {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
+                            Int32Array int32Array => int32Array.Values[i],
+                            Int64Array int64Array => int64Array.Values[i],
+                            DoubleArray doubleArray => doubleArray.Values[i],
+                            Decimal128Array decimal128Array => decimal128Array.GetValue(i) ?? 0,
+                            StringArray stringArray => stringArray.GetString(i),
+                            Date64Array date64Array => date64Array.Values[i],
+                            Date32Array date32Array => date32Array.Values[i],
+                            FloatArray floatArray => floatArray.Values[i],
                             // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                            _ => "Unsupported array type",
+                        };
                     }
 
                     results.Add(JsonSerializer.Serialize(rowData));

@@ -15,7 +15,7 @@ namespace DiscoData2API_Priv.Controllers
     {
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
-        private readonly ILogger<ViewController> _logger;
+        //private readonly ILogger<ViewController> _logger;
 
 
         [HttpGet("GetSchema")]
@@ -28,14 +28,14 @@ namespace DiscoData2API_Priv.Controllers
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
                 result = FixMalformedJson(result);
 
-                List<DremioRawSchema> rawSchemaList = JsonSerializer.Deserialize<List<DremioRawSchema>>(result) ?? new List<DremioRawSchema>();
+                List<DremioRawSchema> rawSchemaList = JsonSerializer.Deserialize<List<DremioRawSchema>>(result) ?? [];
 
                 if (rawSchemaList == null)
                 {
                     return NotFound("No schema found.");
                 }
 
-                List<DremioSchema> schemaList = new List<DremioSchema>();
+                List<DremioSchema> schemaList = [];
                 foreach (var item in rawSchemaList)
                 {
                     schemaList.Add(new DremioSchema()
@@ -48,7 +48,7 @@ namespace DiscoData2API_Priv.Controllers
                 foreach (var schema in schemaList)
                 {
                     var schemaPathItem = schema.Schema.Split('.');
-                    schema.SchemaName = schemaPathItem[schemaPathItem.Length - 2];
+                    schema.SchemaName = schemaPathItem[^2];
                 }
 
                 return Ok(schemaList);
@@ -68,9 +68,9 @@ namespace DiscoData2API_Priv.Controllers
             {
                 var query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.\"TABLES\" WHERE TABLE_SCHEMA = '" + schema + "'";
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
-                var rawTableList = JsonSerializer.Deserialize<List<DremioRawTable>>(result) ?? new List<DremioRawTable>();
+                var rawTableList = JsonSerializer.Deserialize<List<DremioRawTable>>(result) ?? [];
 
-                List<DremioTable> tableList = new List<DremioTable>();
+                List<DremioTable> tableList = [];
                 foreach (var item in rawTableList)
                 {
                     tableList.Add(new DremioTable()
@@ -85,7 +85,7 @@ namespace DiscoData2API_Priv.Controllers
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error in GetTableDetail");
-                return new List<DremioTable>();
+                return [];
             }
         }
 
@@ -97,13 +97,13 @@ namespace DiscoData2API_Priv.Controllers
             {
                 var query = "SELECT * FROM INFORMATION_SCHEMA.\"COLUMNS\" WHERE TABLE_SCHEMA = '" + schema + "' and TABLE_NAME = '" + table + "'";
                 var result = await dremioService.ExecuteQuery(query, cts.Token);
-                var columns = JsonSerializer.Deserialize<List<DremioColumn>>(result) ?? new List<DremioColumn>();
+                var columns = JsonSerializer.Deserialize<List<DremioColumn>>(result) ?? [];
                 return columns;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error in GetTableDetail");
-                return new List<DremioColumn>();
+                return [];
             }
         }
 
@@ -134,7 +134,7 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
         #region Helper Methods
-        private string FixMalformedJson(string json)
+        private static string FixMalformedJson(string json)
         {
             // Ensure there is a comma between JSON objects
             json = Regex.Replace(json, @"}(\s*){", "},{");
