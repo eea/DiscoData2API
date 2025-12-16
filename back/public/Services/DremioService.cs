@@ -56,7 +56,7 @@ namespace DiscoData2API.Services
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
             var queryId = Guid.NewGuid().ToString();
-            _logger.LogInformation($"Start execute query {queryId}");
+            _logger.LogInformation("Start execute query {}", queryId);
 
             // Acquire query slot for throttling
             using var queryToken = await _throttlingService.AcquireQuerySlotAsync(queryId, cts);
@@ -65,7 +65,7 @@ namespace DiscoData2API.Services
             return await _dremioCircuitBreaker.ExecuteAsync(async () =>
             {
                 var flightInfo = await ConnectArrowFlight(query, cts);
-                _logger.LogInformation($"After execute ConnectArrowFlight for query {queryId}");
+                _logger.LogInformation("After execute ConnectArrowFlight for query {}", queryId);
 
                 var allResults = new StringBuilder("[");
                 await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2, flightInfo.Item3))
@@ -73,7 +73,7 @@ namespace DiscoData2API.Services
                     allResults.Append(ConvertRecordBatchToJson(batch));
                     await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
                 }
-                _logger.LogInformation($"After query result for query {queryId}");
+                _logger.LogInformation("After query result for query {}", queryId);
                 allResults.Append(']');
 
                 return allResults.ToString();
@@ -101,9 +101,9 @@ namespace DiscoData2API.Services
             // Execute within circuit breaker
             return await _dremioCircuitBreaker.ExecuteAsync(async () =>
             {
-                _logger.LogInformation($"Start execute streaming query {queryId}, maxRows: {effectiveMaxRows}");
+                _logger.LogInformation("Start execute streaming query {}, maxRows: {}", queryId, effectiveMaxRows);
                 var flightConnection = await ConnectArrowFlight(query, cts);
-                _logger.LogInformation($"After execute ConnectArrowFlight for query {queryId}");
+                _logger.LogInformation("After execute ConnectArrowFlight for query {}", queryId);
 
                 FlightClient? flightClient = flightConnection.Item3;
                 using var writer = new StreamWriter(outputStream, leaveOpen: true);
@@ -125,7 +125,7 @@ namespace DiscoData2API.Services
                         {
                             if (effectiveMaxRows > 0 && totalRows >= effectiveMaxRows)
                             {
-                                _logger.LogInformation($"Reached max rows limit: {effectiveMaxRows}");
+                                _logger.LogInformation("Reached max rows limit: {}", effectiveMaxRows);
                                 goto EndStream;
                             }
 
@@ -149,23 +149,23 @@ namespace DiscoData2API.Services
                         await Task.Delay(TimeSpan.FromMilliseconds(1), cts);
                     }
 
-                    EndStream:
+                EndStream:
                     await writer.WriteAsync("]");
                     await writer.FlushAsync();
 
-                    _logger.LogInformation($"Streaming completed for query {queryId}, total rows: {totalRows}");
+                    _logger.LogInformation("Streaming completed for query {}, total rows: {}", queryId, totalRows);
                 }
                 finally
                 {
                     // Clean up flight connection
                     try
                     {
-                        var action = new FlightAction("Stop Flight Server", new byte[0]);
+                        var action = new FlightAction("Stop Flight Server", System.Array.Empty<byte>());
                         using var call = flightClient.DoAction(action);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning($"Error stopping flight server: {ex.Message}");
+                        _logger.LogWarning("Error stopping flight server: {}", ex.Message);
                     }
 
                     // Return client to pool
@@ -192,14 +192,14 @@ namespace DiscoData2API.Services
             // Enforce maximum result set size
             if (requestedLimit > _settings.MaxResultSetSize)
             {
-                _logger.LogWarning($"Requested limit {requestedLimit} exceeds max result set size {_settings.MaxResultSetSize}, applying limit");
+                _logger.LogWarning("Requested limit {} exceeds max result set size {}, applying limit", requestedLimit, _settings.MaxResultSetSize);
                 return _settings.MaxResultSetSize;
             }
 
             // Enforce maximum page size for reasonable limits
             if (requestedLimit > _settings.MaxPageSize)
             {
-                _logger.LogInformation($"Requested limit {requestedLimit} exceeds max page size {_settings.MaxPageSize}, applying page limit");
+                _logger.LogInformation("Requested limit {} exceeds max page size {}, applying page limit", requestedLimit, _settings.MaxPageSize);
                 return _settings.MaxPageSize;
             }
 
@@ -312,61 +312,10 @@ namespace DiscoData2API.Services
             }
         }
 
-        private FlightClient InitializeFlightClient()
-        {
-            //var channel = GrpcChannel.ForAddress($"{_dremioServer}");
-
-            var httpHandler = new HttpClientHandler();
-            httpHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            var channel = GrpcChannel.ForAddress($"{_dremioServer}", new GrpcChannelOptions { HttpHandler = httpHandler });
-
-            return new FlightClient(channel);
-        }
 
         private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
             var data = new List<Dictionary<string, object>>();
-
-            // Iterate over rows first
-            for (int i = 0; i < recordBatch.Length; i++)
-            {
-                var rowData = new Dictionary<string, object>();
-                try
-                {
-                    // For each row, iterate over columns
-                    foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
-                    {
-                        string columnName = column.field.Name;
-
-                        rowData[columnName] = column.array switch
-                        {
-                            Int32Array int32Array => int32Array.Values[i],
-                            Int64Array int64Array => int64Array.Values[i],
-                            DoubleArray doubleArray => doubleArray.Values[i],
-                            Decimal128Array decimal128Array => decimal128Array.GetValue(i) ?? 0,
-                            StringArray stringArray => stringArray.GetString(i),
-                            Date64Array date64Array => date64Array.Values[i],
-                            Date32Array date32Array => date32Array.Values[i],
-                            FloatArray floatArray => floatArray.Values[i],
-                            // Add cases for other array types as needed
-                            _ => "Unsupported array type",
-                        };
-                    }
-                }
-                catch
-                {
-                }
-
-                data.Add(rowData);
-            }
-
-
-            return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
-        }
-
-        private static List<string> ConvertRecordBatchToJsonArray(RecordBatch recordBatch)
-        {
-            var results = new List<string>();
 
             // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
@@ -410,6 +359,47 @@ namespace DiscoData2API.Services
                                 rowData[columnName] = "Unsupported array type";
                                 break;
                         }
+                    }
+                }
+                catch
+                {
+                }
+
+                data.Add(rowData);
+            }
+
+
+            return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
+        }
+
+        private static List<string> ConvertRecordBatchToJsonArray(RecordBatch recordBatch)
+        {
+            var results = new List<string>();
+
+            // Iterate over rows first
+            for (int i = 0; i < recordBatch.Length; i++)
+            {
+                var rowData = new Dictionary<string, object>();
+                try
+                {
+                    // For each row, iterate over columns
+                    foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
+                    {
+                        string columnName = column.field.Name;
+
+                        rowData[columnName] = column.array switch
+                        {
+                            Int32Array int32Array => int32Array.Values[i],
+                            Int64Array int64Array => int64Array.Values[i],
+                            DoubleArray doubleArray => doubleArray.Values[i],
+                            Decimal128Array decimal128Array => decimal128Array.GetValue(i) ?? 0,
+                            StringArray stringArray => stringArray.GetString(i),
+                            Date64Array date64Array => date64Array.Values[i],
+                            Date32Array date32Array => date32Array.Values[i],
+                            FloatArray floatArray => floatArray.Values[i],
+                            // Add cases for other array types as needed
+                            _ => "Unsupported array type",
+                        };
                     }
 
                     results.Add(JsonSerializer.Serialize(rowData));
