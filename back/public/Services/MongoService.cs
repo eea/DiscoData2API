@@ -29,7 +29,7 @@ namespace DiscoData2API.Services
             try
             {
                 List<MongoDocument> result = await _collection.Find(p => p.IsActive).ToListAsync();
-                return result.Select(item => new MongoPublicDocument(item)).ToList();
+                return [.. result.Select(item => new MongoPublicDocument(item))];
             }
             catch (Exception ex)
             {
@@ -55,9 +55,7 @@ namespace DiscoData2API.Services
             }
             catch (Exception ex)
             {
-#pragma warning disable CA2254 // La plantilla debe ser una expresión estática
-                _logger.LogError(ex, string.Format("Error while getting document with id {0}", id));
-#pragma warning restore CA2254 // La plantilla debe ser una expresión estática
+                _logger.LogError(ex, "Error while getting document with id {}", id);
                 throw;
             }
         }
