@@ -71,10 +71,10 @@ namespace DiscoData2API.Class
         private async Task<(FlightInfo?, Metadata)> ConnectArrowFlight(string query, CancellationToken cts)
         {
 
-            string token = string.Empty;
-            Metadata? headers = null;
-            FlightDescriptor? descriptor = null;
-            FlightInfo? flightInfo = null;
+            string token;
+            Metadata? headers;
+            FlightDescriptor? descriptor;
+            FlightInfo? flightInfo;
             //checked first if we can connect to dremio
             try
             {
@@ -124,8 +124,10 @@ namespace DiscoData2API.Class
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
 
-                HttpClientHandler clientHandler = new HttpClientHandler();
-                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+                HttpClientHandler clientHandler = new()
+                {
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
+                };
 
                 // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
@@ -155,8 +157,10 @@ namespace DiscoData2API.Class
         {
             //var channel = GrpcChannel.ForAddress($"{_dremioServer}");
 
-            var httpHandler = new HttpClientHandler();
-            httpHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            var httpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
             var channel = GrpcChannel.ForAddress($"{_dremioServer}", new GrpcChannelOptions { HttpHandler = httpHandler });
 
             return new FlightClient(channel);
@@ -177,37 +181,19 @@ namespace DiscoData2API.Class
                     {
                         string columnName = column.field.Name;
 
-                        switch (column.array)
+                        rowData[columnName] = column.array switch
                         {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
+                            Int32Array int32Array => int32Array.Values[i],
+                            Int64Array int64Array => int64Array.Values[i],
+                            DoubleArray doubleArray => doubleArray.Values[i],
+                            Decimal128Array decimal128Array => decimal128Array.GetValue(i) ?? 0,
+                            StringArray stringArray => stringArray.GetString(i),
+                            Date64Array date64Array => date64Array.Values[i],
+                            Date32Array date32Array => date32Array.Values[i],
+                            FloatArray floatArray => floatArray.Values[i],
                             // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                            _ => "Unsupported array type",
+                        };
                     }
                 }
                 catch

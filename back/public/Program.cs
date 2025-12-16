@@ -29,7 +29,7 @@ builder.Services.UseHttpClientMetrics();
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
-    options.MimeTypes = new[] { "text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition" };
+    options.MimeTypes = ["text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition"];
 });
 builder.Services.Configure<GzipCompressionProviderOptions>
    (opt =>
