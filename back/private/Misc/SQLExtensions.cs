@@ -14,18 +14,14 @@ namespace DiscoData2API_Priv.Misc
 
         private static bool ValidateSQL(string sql, Regex keywordRegex)
         {
-            bool valid;
             try
             {
-                valid = ReallyValidateSQL(sql, keywordRegex);
+                return ReallyValidateSQL(sql, keywordRegex);
             }
-            //TODO - Do you want to catch the exception here or not?
             catch
             {
-                //TODO - Log the exception?
                 throw;
             }
-            return valid;
         }
 
         private static bool ReallyValidateSQL(string sql, Regex keywordRegex)
@@ -78,10 +74,6 @@ namespace DiscoData2API_Priv.Misc
                 for (int i = 0; i < CommentTagSets.GetLength(0); i++)
                 {
                     var result2 = RemoveCommentIfFound(sqlWithStringsRemoved, firstOccurrenceOfDelimiter, CommentTagSets[i, 0], CommentTagSets[i, 1]);
-                    #region NEW SYNTAX OPTION BIT 3 of 3
-                    //if (result.stopParsing)
-                    //	return result.sql;
-                    #endregion
                     if (result2.Item1)
                         return result2.Item2;
                 }
@@ -103,9 +95,6 @@ namespace DiscoData2API_Priv.Misc
             return sqlWithStringsRemoved;
         }
 
-        #region NEW SYNTAX OPTION BIT 1 of 3
-        //private static (bool stopParsing, string sql) RemoveCommentIfFound(string sql, int firstOccurrenceOfDelimiter)
-        #endregion
         private static Tuple<bool, string> RemoveCommentIfFound(string sql, int firstOccurrenceOfDelimiter, string commentBeginTag, string commentEndTag = "")
         {
             bool stopParsingSQL = false;
@@ -133,9 +122,6 @@ namespace DiscoData2API_Priv.Misc
                     sql = sql[..commentStart];
                 }
             }
-            #region NEW SYNTAX OPTION BIT 2 of 3
-            //return (stopParsing, sql);
-            #endregion
             return new Tuple<bool, string>(stopParsingSQL, sql);
         }
         #endregion

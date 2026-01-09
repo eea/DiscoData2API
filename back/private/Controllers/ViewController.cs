@@ -38,7 +38,6 @@ namespace DiscoData2API_Priv.Controllers
 
                 return await mongoService.CreateAsync(new MongoDocument()
                 {
-                    ID = System.Guid.NewGuid().ToString(),
                     Query = request.Query,
                     Name = request.Name,
                     UserAdded = request.UserAdded,
@@ -48,7 +47,8 @@ namespace DiscoData2API_Priv.Controllers
                     Parameters = request.Parameters,
                     IsActive = true,
                     Date = DateTime.Now,
-                    Catalog = request.Catalog
+                    Catalog = request.Catalog,
+                    ProjectId = request.ProjectId
                 });
             }
             catch (OperationCanceledException)
@@ -130,7 +130,6 @@ namespace DiscoData2API_Priv.Controllers
                     return BadRequest("SQL query contains unsafe keywords.");
                 }
 
-                if (!hasId && string.IsNullOrEmpty(doc.ID)) doc.ID = System.Guid.NewGuid().ToString();
                 //we update the fields in case the query changed
                 doc.Query = request.Query;
                 doc.Name = request.Name;
@@ -142,6 +141,7 @@ namespace DiscoData2API_Priv.Controllers
                 doc.IsActive = true;
                 doc.Date = DateTime.Now;
                 if (!string.IsNullOrEmpty(request.Catalog)) doc.Catalog = request.Catalog;
+                if (!string.IsNullOrEmpty(request.ProjectId)) doc.ProjectId = request.ProjectId;
 
                 var updatedDocument = await mongoService.UpdateAsync(id, doc, hasId);
                 if (updatedDocument == null)
@@ -214,27 +214,23 @@ namespace DiscoData2API_Priv.Controllers
         /// Get catalog of queries (MongoDB)
         /// </summary>
         /// <param name="userAdded">The username that created the query</param>
-        /// <param name="catalog">The catalog to filter by</param>
+        /// <param name="projectId">The project ID to filter by</param>
         /// <returns>Return a list of MongoDocument class</returns>
         /// <response code="200">Returns the catalogue</response>
         /// <response code="408">If the request times out</response>
         [HttpGet("GetCatalog")]
-        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded, [FromQuery] string? catalog)
+        public async Task<ActionResult<List<MongoDocument>>> GetMongoCatalog([FromQuery] string? userAdded, [FromQuery] string? projectId)
         {
             try
             {
                 // Handle different filtering combinations
-                if (!string.IsNullOrEmpty(userAdded) && !string.IsNullOrEmpty(catalog))
+                if (!string.IsNullOrEmpty(projectId))
                 {
-                    return await mongoService.GetAllByUserAndCatalogAsync(userAdded, catalog);
+                    return await mongoService.GetAllByProjectAsync(projectId, userAdded);
                 }
                 else if (!string.IsNullOrEmpty(userAdded))
                 {
                     return await mongoService.GetAllByUserAsync(userAdded);
-                }
-                else if (!string.IsNullOrEmpty(catalog))
-                {
-                    return await mongoService.GetAllByCatalogAsync(catalog);
                 }
                 else
                 {
@@ -339,7 +335,7 @@ namespace DiscoData2API_Priv.Controllers
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>
         [HttpPost("Execute/{id}")]
-        public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryExecutionRequest request)
+        public async Task<ActionResult<string>> ExecuteQuery(string id, [FromBody] QueryExecutionRequest? request)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
             try
@@ -354,18 +350,20 @@ namespace DiscoData2API_Priv.Controllers
 
                 var processedQuery = mongoDoc.Query;
 
-                // Substitute parameters if provided
-                if (request.Parameters != null && request.Parameters.Count > 0)
+                // Substitute parameters if there are any parameters defined (uses defaults if no values provided)
+                if (mongoDoc.Parameters != null && mongoDoc.Parameters.Count > 0)
                 {
                     processedQuery = parameterService.SubstituteParameters(
                         processedQuery,
                         mongoDoc.Parameters,
-                        request.Parameters
+                        request?.Parameters
                     );
                 }
 
                 // Apply additional filters if provided
-                if (request.Fields != null || request.Filters != null || request.Limit != null)
+                if ((request?.Fields != null && request.Fields.Length > 0) ||
+                    (request?.Filters != null && request.Filters.Length > 0) ||
+                    request?.Limit != null)
                 {
                     processedQuery = UpdateQueryString(processedQuery, request.Fields, request.Limit, request.Filters);
                 }
@@ -438,10 +436,10 @@ namespace DiscoData2API_Priv.Controllers
         /// <response code="404">If the view does not exist</response>
         /// <response code="408">If the request times out</response>
         [HttpPost("Stream/{id}")]
-        public async Task StreamQuery(string id, [FromBody] QueryExecutionRequest request)
+        public async Task StreamQuery(string id, [FromBody] QueryExecutionRequest? request)
         {
             var queryId = $"{id}-{Guid.NewGuid():N}";
-            var maxRows = request.Limit ?? _defaultLimit;
+            var maxRows = request?.Limit ?? _defaultLimit;
             var dynamicTimeout = dremioService.GetTimeoutForQuery(maxRows);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(dynamicTimeout));
@@ -461,18 +459,20 @@ namespace DiscoData2API_Priv.Controllers
 
                 var processedQuery = mongoDoc.Query;
 
-                // Substitute parameters if provided
-                if (request.Parameters != null && request.Parameters.Count > 0)
+                // Substitute parameters if there are any parameters defined (uses defaults if no values provided)
+                if (mongoDoc.Parameters != null && mongoDoc.Parameters.Count > 0)
                 {
                     processedQuery = parameterService.SubstituteParameters(
                         processedQuery,
                         mongoDoc.Parameters,
-                        request.Parameters
+                        request?.Parameters
                     );
                 }
 
                 // Apply additional filters if provided
-                if (request.Fields != null || request.Filters != null || request.Limit != null)
+                if ((request?.Fields != null && request.Fields.Length > 0) ||
+                    (request?.Filters != null && request.Filters.Length > 0) ||
+                    request?.Limit != null)
                 {
                     processedQuery = UpdateQueryString(processedQuery, request.Fields, request.Limit, request.Filters);
                 }
@@ -515,40 +515,79 @@ namespace DiscoData2API_Priv.Controllers
                 await Response.WriteAsync(errorMsg);
             }
         }
-
+        
 
         #region helper
 
         private string UpdateQueryString(string query, string[]? fields, int? limit, FilterDefinition[]? filters)
         {
             // Update fields returned by query
-            fields = fields != null && fields.Length > 0 ? fields : ["*"];
-            var _query_aux = query;
-            _query_aux = _query_aux.Replace("*", string.Join(",", fields));  //used for debugging
+            // Filter out invalid field names like "string", "additionalProp1", etc. (common from Swagger examples)
+            var invalidFieldNames = new[] { "string", "additionalProp1", "additionalProp2", "additionalProp3" };
+
+            // Handle null, empty array, or arrays with only invalid field names
+            if (fields == null || fields.Length == 0)
+            {
+                // Null or empty array - use all fields
+                fields = ["*"];
+            }
+            else
+            {
+                // Remove invalid/example field names
+                fields = fields.Where(f => !invalidFieldNames.Contains(f, StringComparer.OrdinalIgnoreCase)).ToArray();
+                // If no valid fields remain after filtering, use "*"
+                if (fields.Length == 0)
+                {
+                    fields = ["*"];
+                }
+            }
+
+            // Remove any existing LIMIT clause from the original query to avoid conflicts
+            var cleanedQuery = RemoveLimitClause(query);
 
             // Add filters to query if they exist
             string filter_query = string.Empty;
             StringBuilder _filter_query = new();
             if (filters != null && filters.Length > 0)
             {
-                filter_query = string.Join(" ", filters.Select(a => a.BuildFilterString()));
-                foreach (var filter in filters)
+                // Filter out invalid filters (empty fieldName or condition)
+                var validFilters = filters.Where(f => !string.IsNullOrWhiteSpace(f.FieldName) && !string.IsNullOrWhiteSpace(f.Condition)).ToArray();
+
+                if (validFilters.Length > 0)
                 {
-                    _filter_query.AppendFormat(" {0} ", filter.BuildFilterString());
+                    filter_query = string.Join(" ", validFilters.Select(a => a.BuildFilterString()));
+                    foreach (var filter in validFilters)
+                    {
+                        _filter_query.AppendFormat(" {0} ", filter.BuildFilterString());
+                    }
                 }
             }
 
             // Ensure LIMIT is always at the end
-            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
+            var finalLimit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
 
             string full_query;
             if (string.IsNullOrEmpty(filter_query))
-                full_query = string.Format("select {0} from ({1}) ", string.Join(",", fields), query);
+            {
+                // No filters - add LIMIT to original query
+                full_query = string.Format("{0} LIMIT {1}", cleanedQuery, finalLimit);
+            }
             else
-                full_query = string.Format("select {0} from " +
-                    "(select * from ({1}) WHERE 1=1 {2}) ", string.Join(",", fields), query, filter_query.ToString());
+            {
+                // Insert filters in the correct position (after WHERE, before ORDER BY/GROUP BY)
+                full_query = InsertFiltersIntoQuery(cleanedQuery, filter_query.ToString(), finalLimit);
+            }
 
-            full_query += $" LIMIT {limit}";
+            // Handle field selection if not all fields (*)
+            if (fields.Length == 1 && fields[0] == "*")
+            {
+                // Keep the query as is - selecting all fields
+            }
+            else
+            {
+                // Need to wrap in select for specific field selection
+                full_query = string.Format("select {0} from ({1})", string.Join(",", fields), full_query);
+            }
 
             if (!SQLExtensions.ValidateSQL(full_query))
             {
@@ -556,6 +595,58 @@ namespace DiscoData2API_Priv.Controllers
                 throw new SQLFormattingException("SQL query contains unsafe keywords.");
             }
             return full_query;
+        }
+
+        private string RemoveLimitClause(string query)
+        {
+            // Use regex to remove LIMIT clause (case insensitive)
+            // This pattern matches LIMIT followed by optional whitespace, then digits, at the end of the query
+            var limitPattern = @"\s+LIMIT\s+\d+\s*$";
+            var cleanedQuery = System.Text.RegularExpressions.Regex.Replace(query.Trim(), limitPattern, "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return cleanedQuery;
+        }
+
+        private bool HasWhereClause(string query)
+        {
+            // Use regex to check if query contains a WHERE clause
+            // This looks for WHERE keyword not within quotes or subqueries (simplified check)
+            var wherePattern = @"\bWHERE\b";
+            return System.Text.RegularExpressions.Regex.IsMatch(query, wherePattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        private string InsertFiltersIntoQuery(string query, string filterQuery, int limit)
+        {
+            // Find positions of ORDER BY, GROUP BY, HAVING clauses to insert filters before them
+            var orderByPattern = @"\bORDER\s+BY\b";
+            var groupByPattern = @"\bGROUP\s+BY\b";
+            var havingPattern = @"\bHAVING\b";
+
+            var orderByMatch = System.Text.RegularExpressions.Regex.Match(query, orderByPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var groupByMatch = System.Text.RegularExpressions.Regex.Match(query, groupByPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var havingMatch = System.Text.RegularExpressions.Regex.Match(query, havingPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            // Find the earliest position where we need to insert filters
+            int insertPosition = query.Length;
+            if (orderByMatch.Success) insertPosition = Math.Min(insertPosition, orderByMatch.Index);
+            if (groupByMatch.Success) insertPosition = Math.Min(insertPosition, groupByMatch.Index);
+            if (havingMatch.Success) insertPosition = Math.Min(insertPosition, havingMatch.Index);
+
+            string beforeClauses = query.Substring(0, insertPosition).TrimEnd();
+            string afterClauses = insertPosition < query.Length ? query.Substring(insertPosition) : "";
+
+            string result;
+            if (HasWhereClause(beforeClauses))
+            {
+                // Query already has WHERE - append filters with AND
+                result = string.Format("{0} {1} {2} LIMIT {3}", beforeClauses, filterQuery, afterClauses, limit);
+            }
+            else
+            {
+                // No WHERE clause - add one with filters
+                result = string.Format("{0} WHERE 1=1 {1} {2} LIMIT {3}", beforeClauses, filterQuery, afterClauses, limit);
+            }
+
+            return result.Trim();
         }
 
         #endregion

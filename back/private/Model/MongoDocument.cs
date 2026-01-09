@@ -11,9 +11,6 @@ namespace DiscoData2API_Priv.Model
         [BsonRepresentation(BsonType.ObjectId)]
         public string _id { get; set; } = null!;
 
-        [BsonElement("id")]
-        public string ID { get; set; } = null!;
-
         [BsonElement("name")]
         public string Name { get; set; } = null!;
 
@@ -43,6 +40,10 @@ namespace DiscoData2API_Priv.Model
 
         [BsonElement("parameters")]
         public List<ViewParameter>? Parameters { get; set; } = null!;
+
+        [BsonElement("projectId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? ProjectId { get; set; }
     }
 
     public class Field
