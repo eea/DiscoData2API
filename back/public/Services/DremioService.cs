@@ -55,125 +55,212 @@ namespace DiscoData2API.Services
         /// <returns></returns>
         public async Task<string> ExecuteQuery(string query, CancellationToken cts)
         {
-            var queryId = Guid.NewGuid().ToString();
-            _logger.LogInformation($"Start execute query {queryId}");
+            _logger.LogInformation($"Start execute query");
+            var flightConnection = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"After execute ConnectArrowFlight");
 
-            // Acquire query slot for throttling
-            using var queryToken = await _throttlingService.AcquireQuerySlotAsync(queryId, cts);
-
-            // Execute within circuit breaker
-            return await _dremioCircuitBreaker.ExecuteAsync(async () =>
+            FlightClient? flightClient = flightConnection.Item3;
+            try
             {
-                var flightInfo = await ConnectArrowFlight(query, cts);
-                _logger.LogInformation($"After execute ConnectArrowFlight for query {queryId}");
-
                 var allResults = new StringBuilder("[");
-                await foreach (var batch in StreamRecordBatches(flightInfo.Item1, flightInfo.Item2, flightInfo.Item3))
+                await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
                 {
                     allResults.Append(ConvertRecordBatchToJson(batch));
                     await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
                 }
-                _logger.LogInformation($"After query result for query {queryId}");
+                _logger.LogInformation($"After query result");
                 allResults.Append(']');
 
+                try
+                {
+                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    using var call = flightClient.DoAction(action);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Error stopping flight server: {ex.Message}");
+                }
+
                 return allResults.ToString();
-            });
+            }
+            finally
+            {
+                // Return client to pool
+                _flightClientPool.ReturnClient(flightClient);
+            }
         }
 
         /// <summary>
-        /// Execute a query on Dremio and stream results directly to output stream
+        /// Execute a query on Dremio and stream results directly to the output stream
         /// </summary>
         /// <param name="query">The query to execute</param>
-        /// <param name="outputStream">Stream to write JSON results to</param>
-        /// <param name="cts">Cancellation token</param>
+        /// <param name="outputStream">The stream to write JSON results to</param>
+        /// <param name="cts">The Cancellation token</param>
         /// <param name="maxRows">Maximum number of rows to return (0 = unlimited)</param>
         /// <returns>Number of rows processed</returns>
         public async Task<int> ExecuteQueryStream(string query, Stream outputStream, CancellationToken cts, int maxRows = 0)
         {
-            var queryId = Guid.NewGuid().ToString();
-
             // Apply result size limits based on configuration
             var effectiveMaxRows = ApplyResultSizeLimits(maxRows);
 
-            // Acquire query slot for throttling
-            using var queryToken = await _throttlingService.AcquireQuerySlotAsync(queryId, cts);
+            _logger.LogInformation($"Start execute streaming query, maxRows: {effectiveMaxRows}");
+            var flightConnection = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"After execute ConnectArrowFlight");
 
-            // Execute within circuit breaker
-            return await _dremioCircuitBreaker.ExecuteAsync(async () =>
+            FlightClient? flightClient = flightConnection.Item3;
+            using var writer = new StreamWriter(outputStream, leaveOpen: true);
+            await writer.WriteAsync("[");
+            await writer.FlushAsync();
+
+            int totalRows = 0;
+            bool first = true;
+
+            try
             {
-                _logger.LogInformation($"Start execute streaming query {queryId}, maxRows: {effectiveMaxRows}");
-                var flightConnection = await ConnectArrowFlight(query, cts);
-                _logger.LogInformation($"After execute ConnectArrowFlight for query {queryId}");
+                await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
+                {
+                    cts.ThrowIfCancellationRequested();
 
-                FlightClient? flightClient = flightConnection.Item3;
-                using var writer = new StreamWriter(outputStream, leaveOpen: true);
-                await writer.WriteAsync("[");
+                    var batchJson = ConvertRecordBatchToJsonArray(batch);
+
+                    foreach (var rowJson in batchJson)
+                    {
+                        if (effectiveMaxRows > 0 && totalRows >= effectiveMaxRows)
+                        {
+                            _logger.LogInformation($"Reached max rows limit: {effectiveMaxRows}");
+                            goto EndStream;
+                        }
+
+                        if (!first)
+                        {
+                            await writer.WriteAsync(",");
+                        }
+                        first = false;
+
+                        await writer.WriteAsync(rowJson);
+                        totalRows++;
+
+                        // Flush periodically to ensure responsive streaming
+                        if (totalRows % 100 == 0)
+                        {
+                            await writer.FlushAsync();
+                        }
+                    }
+
+                    // Small delay to prevent overwhelming the client
+                    await Task.Delay(TimeSpan.FromMilliseconds(1), cts);
+                }
+
+            EndStream:
+                await writer.WriteAsync("]");
                 await writer.FlushAsync();
 
-                int totalRows = 0;
-                bool first = true;
+                _logger.LogInformation($"Streaming completed, total rows: {totalRows}");
+            }
+            finally
+            {
+                // Clean up flight connection
+                try
+                {
+                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    using var call = flightClient.DoAction(action);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Error stopping flight server: {ex.Message}");
+                }
+
+                // Return client to pool
+                _flightClientPool.ReturnClient(flightClient);
+            }
+
+            return totalRows;
+        }
+
+        /// <summary>
+        /// Execute query for WISE API with Dremio-compatible response format
+        /// </summary>
+        /// <param name="query">SQL query to execute</param>
+        /// <param name="cts">Cancellation token</param>
+        /// <returns>Dremio-compatible JSON object with columns and rows</returns>
+        public async Task<object> ExecuteWiseQuery(string query, CancellationToken cts)
+        {
+            _logger.LogInformation($"Start execute WISE query");
+            var flightConnection = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"After execute ConnectArrowFlight");
+
+            FlightClient? flightClient = flightConnection.Item3;
+            try
+            {
+                var columns = new List<object>();
+                var rows = new List<object>();
+                bool columnsInitialized = false;
+
+                await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
+                {
+                    // Initialize columns from first batch
+                    if (!columnsInitialized)
+                    {
+                        foreach (var field in batch.Schema.FieldsList)
+                        {
+                            columns.Add(new { name = field.Name });
+                        }
+                        columnsInitialized = true;
+                    }
+
+                    // Process each row in the batch
+                    for (int rowIndex = 0; rowIndex < batch.Length; rowIndex++)
+                    {
+                        var rowValues = new List<object>();
+
+                        // For each row, iterate over columns
+                        for (int colIndex = 0; colIndex < batch.ColumnCount; colIndex++)
+                        {
+                            var array = batch.Column(colIndex);
+                            object? value;
+
+                            try
+                            {
+                                value = GetArrayValue(array, rowIndex);
+                            }
+                            catch (Exception ex)
+                            {
+                                value = $"Error: {ex.Message}";
+                            }
+
+                            rowValues.Add(new { v = value });
+                        }
+
+                        rows.Add(new { row = rowValues });
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
+                }
+
+                _logger.LogInformation($"After WISE query result");
 
                 try
                 {
-                    await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
-                    {
-                        cts.ThrowIfCancellationRequested();
-
-                        var batchJson = ConvertRecordBatchToJsonArray(batch);
-
-                        foreach (var rowJson in batchJson)
-                        {
-                            if (effectiveMaxRows > 0 && totalRows >= effectiveMaxRows)
-                            {
-                                _logger.LogInformation($"Reached max rows limit: {effectiveMaxRows}");
-                                goto EndStream;
-                            }
-
-                            if (!first)
-                            {
-                                await writer.WriteAsync(",");
-                            }
-                            first = false;
-
-                            await writer.WriteAsync(rowJson);
-                            totalRows++;
-
-                            // Flush periodically to ensure responsive streaming
-                            if (totalRows % 100 == 0)
-                            {
-                                await writer.FlushAsync();
-                            }
-                        }
-
-                        // Small delay to prevent overwhelming the client
-                        await Task.Delay(TimeSpan.FromMilliseconds(1), cts);
-                    }
-
-                    EndStream:
-                    await writer.WriteAsync("]");
-                    await writer.FlushAsync();
-
-                    _logger.LogInformation($"Streaming completed for query {queryId}, total rows: {totalRows}");
+                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    using var call = flightClient.DoAction(action);
                 }
-                finally
+                catch (Exception ex)
                 {
-                    // Clean up flight connection
-                    try
-                    {
-                        var action = new FlightAction("Stop Flight Server", new byte[0]);
-                        using var call = flightClient.DoAction(action);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning($"Error stopping flight server: {ex.Message}");
-                    }
-
-                    // Return client to pool
-                    _flightClientPool.ReturnClient(flightClient);
+                    _logger.LogWarning($"Error stopping flight server: {ex.Message}");
                 }
 
-                return totalRows;
-            });
+                // Return Dremio-compatible format
+                return new
+                {
+                    columns = columns,
+                    rows = rows
+                };
+            }
+            finally
+            {
+                // Return client to pool
+                _flightClientPool.ReturnClient(flightClient);
+            }
         }
 
         /// <summary>
@@ -272,6 +359,37 @@ namespace DiscoData2API.Services
         }
 
         #region Helpers
+        /// <summary>
+        /// Extract a value from an Arrow array at a specific row index
+        /// </summary>
+        private static object? GetArrayValue(IArrowArray array, int rowIndex)
+        {
+            return array switch
+            {
+                Int8Array int8Array => int8Array.Values[rowIndex],
+                Int16Array int16Array => int16Array.Values[rowIndex],
+                Int32Array int32Array => int32Array.Values[rowIndex],
+                Int64Array int64Array => int64Array.Values[rowIndex],
+                UInt8Array uint8Array => uint8Array.Values[rowIndex],
+                UInt16Array uint16Array => uint16Array.Values[rowIndex],
+                UInt32Array uint32Array => uint32Array.Values[rowIndex],
+                UInt64Array uint64Array => uint64Array.Values[rowIndex],
+                FloatArray floatArray => floatArray.Values[rowIndex],
+                DoubleArray doubleArray => doubleArray.Values[rowIndex],
+                BooleanArray boolArray => boolArray.GetValue(rowIndex),
+                Decimal128Array decimal128Array => decimal128Array.GetValue(rowIndex) ?? 0,
+                Decimal256Array decimal256Array => decimal256Array.GetString(rowIndex),
+                StringArray stringArray => stringArray.GetString(rowIndex),
+                BinaryArray binaryArray => Convert.ToBase64String(binaryArray.GetBytes(rowIndex).ToArray()),
+                Date32Array date32Array => date32Array.Values[rowIndex],
+                Date64Array date64Array => date64Array.Values[rowIndex],
+                Time32Array time32Array => time32Array.Values[rowIndex],
+                Time64Array time64Array => time64Array.Values[rowIndex],
+                TimestampArray timestampArray => timestampArray.GetValue(rowIndex),
+                NullArray => null,
+                _ => $"Unsupported array type: {array.GetType().Name}"
+            };
+        }
 
         private async Task<string> Authenticate()
         {
@@ -286,10 +404,8 @@ namespace DiscoData2API.Services
                 HttpClientHandler clientHandler = new HttpClientHandler();
                 clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
 
-                // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
                 using var client = new HttpClient(clientHandler);
-                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
                 using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
                 response.EnsureSuccessStatusCode();
 
@@ -310,57 +426,26 @@ namespace DiscoData2API.Services
             }
         }
 
-
         private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
-            var data = new List<Dictionary<string, object>>();
+            var data = new List<Dictionary<string, object?>>();
 
             // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
             {
-                var rowData = new Dictionary<string, object>();
+                var rowData = new Dictionary<string, object?>();
                 try
                 {
                     // For each row, iterate over columns
                     foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
                         string columnName = column.field.Name;
-
-                        switch (column.array)
-                        {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
-                            // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                        rowData[columnName] = GetArrayValue(column.array, i);
                     }
                 }
-                catch
+                catch (Exception)
                 {
+                    // Skip problematic rows silently to maintain data integrity
                 }
 
                 data.Add(rowData);
@@ -377,45 +462,14 @@ namespace DiscoData2API.Services
             // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
             {
-                var rowData = new Dictionary<string, object>();
+                var rowData = new Dictionary<string, object?>();
                 try
                 {
                     // For each row, iterate over columns
                     foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
                         string columnName = column.field.Name;
-
-                        switch (column.array)
-                        {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
-                            // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                        rowData[columnName] = GetArrayValue(column.array, i);
                     }
 
                     results.Add(JsonSerializer.Serialize(rowData));
@@ -436,26 +490,15 @@ namespace DiscoData2API.Services
             // the only endpoint might be the same server we initially queried.
             foreach (var endpoint in info.Endpoints)
             {
-                // We may have multiple locations to choose from. Here we choose the first.
-                //var download_channel = GrpcChannel.ForAddress(endpoint.Locations.First().Uri);
-                //var download_client = new FlightClient(download_channel);
+                var stream = flightClient.GetStream(endpoint.Ticket, headers);
 
-                try
+                while (await stream.ResponseStream.MoveNext())
                 {
-                    var stream = flightClient.GetStream(endpoint.Ticket, headers);
-
-                    while (await stream.ResponseStream.MoveNext())
-                    {
-                        yield return stream.ResponseStream.Current;
-                    }
-                }
-                finally
-                {
-                    // Return client to pool after streaming
-                    _flightClientPool.ReturnClient(flightClient);
+                    yield return stream.ResponseStream.Current;
                 }
             }
         }
+
 
         #endregion
     }

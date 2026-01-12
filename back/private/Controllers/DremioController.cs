@@ -11,11 +11,11 @@ namespace DiscoData2API_Priv.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [ApiExplorerSettings(IgnoreApi = false)]
-    public class DremioController(ILogger<ViewController> logger, DremioService dremioService) : ControllerBase
+    public class DremioController(ILogger<DremioController> logger, DremioService dremioService) : ControllerBase
     {
+        private readonly ILogger<DremioController> _logger = logger;
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
-        private readonly ILogger<ViewController> _logger;
 
 
         [HttpGet("GetSchema")]
@@ -55,7 +55,7 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error in GetTable");
+                _logger.LogError(ex, "Error in GetTable");
                 return StatusCode(500, ex.Message);
             }
         }
@@ -84,7 +84,7 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error in GetTableDetail");
+                _logger.LogError(ex, "Error in GetTableDetail");
                 return new List<DremioTable>();
             }
         }
@@ -102,13 +102,13 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error in GetTableDetail");
+                _logger.LogError(ex, "Error in GetTableDetail");
                 return new List<DremioColumn>();
             }
         }
 
-        [HttpPost("TestQuery")]
-        public async Task<ActionResult<string>> TestQuery([FromBody] DremioJob request)
+        [HttpPost("RunQuery")]
+        public async Task<ActionResult<string>> RunQuery([FromBody] DremioJob request)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
@@ -118,21 +118,49 @@ namespace DiscoData2API_Priv.Controllers
             }
             catch (OperationCanceledException)
             {
-                logger.LogError("Task was canceled due to timeout.");
+                _logger.LogError("Task was canceled due to timeout.");
                 return StatusCode(StatusCodes.Status408RequestTimeout, "Request timed out.");
             }
             catch (SQLFormattingException ex)
             {
-                logger.LogError(ex.Message);
+                _logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
             }
             catch (Exception ex)
             {
-                logger.LogError(message: ex.Message);
+                _logger.LogError(message: ex.Message);
                 string errmsg = ((Grpc.Core.RpcException)ex).Status.Detail;
                 return StatusCode(StatusCodes.Status400BadRequest, errmsg);
             }
         }
+        
+        [HttpPost("WiseQuery")]
+        [Produces("application/json")]
+        public async Task<IActionResult> ExecuteWiseQuery([FromBody] QueryRequest request, CancellationToken cts)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Query))
+                {
+                    return BadRequest(new { error = "Query cannot be empty" });
+                }
+
+                var result = await dremioService.ExecuteWiseQuery(request.Query, cts);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing WISE query");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // Request model (if not already defined)
+        public class QueryRequest
+        {
+            public string Query { get; set; }
+        }
+        
         #region Helper Methods
         private string FixMalformedJson(string json)
         {

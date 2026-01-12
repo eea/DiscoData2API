@@ -60,7 +60,6 @@ namespace DiscoData2API_Priv.Services
                 var allResults = new StringBuilder("[");
                 await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
                 {
-                    //Console.WriteLine($"Read batch from flight server: \n {batch}");
                     allResults.Append(ConvertRecordBatchToJson(batch));
                     await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
                 }
@@ -174,6 +173,92 @@ namespace DiscoData2API_Priv.Services
         }
 
         /// <summary>
+        /// Execute query for WISE API with Dremio-compatible response format
+        /// </summary>
+        /// <param name="query">SQL query to execute</param>
+        /// <param name="cts">Cancellation token</param>
+        /// <returns>Dremio-compatible JSON object with columns and rows</returns>
+        public async Task<object> ExecuteWiseQuery(string query, CancellationToken cts)
+        {
+            _logger.LogInformation($"Start execute WISE query");
+            var flightConnection = await ConnectArrowFlight(query, cts);
+            _logger.LogInformation($"After execute ConnectArrowFlight");
+
+            FlightClient? flightClient = flightConnection.Item3;
+            try
+            {
+                var columns = new List<object>();
+                var rows = new List<object>();
+                bool columnsInitialized = false;
+
+                await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
+                {
+                    // Initialize columns from first batch
+                    if (!columnsInitialized)
+                    {
+                        foreach (var field in batch.Schema.FieldsList)
+                        {
+                            columns.Add(new { name = field.Name });
+                        }
+                        columnsInitialized = true;
+                    }
+
+                    // Process each row in the batch
+                    for (int rowIndex = 0; rowIndex < batch.Length; rowIndex++)
+                    {
+                        var rowValues = new List<object>();
+
+                        // For each row, iterate over columns
+                        for (int colIndex = 0; colIndex < batch.ColumnCount; colIndex++)
+                        {
+                            var array = batch.Column(colIndex);
+                            object? value;
+
+                            try
+                            {
+                                value = GetArrayValue(array, rowIndex);
+                            }
+                            catch (Exception ex)
+                            {
+                                value = $"Error: {ex.Message}";
+                            }
+
+                            rowValues.Add(new { v = value });
+                        }
+
+                        rows.Add(new { row = rowValues });
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
+                }
+
+                _logger.LogInformation($"After WISE query result");
+
+                try
+                {
+                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    using var call = flightClient.DoAction(action);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Error stopping flight server: {ex.Message}");
+                }
+
+                // Return Dremio-compatible format
+                return new
+                {
+                    columns = columns,
+                    rows = rows
+                };
+            }
+            finally
+            {
+                // Return client to pool
+                _flightClientPool.ReturnClient(flightClient);
+            }
+        }
+
+        /// <summary>
         /// Applies configuration-based result size limits
         /// </summary>
         /// <param name="requestedLimit">The limit requested by the client</param>
@@ -284,7 +369,6 @@ namespace DiscoData2API_Priv.Services
                 FlightInfo? flightInfo = null;
                 FlightClient? flightClient = null;
 
-                //checked first if we can connect to dremio
                 try
                 {
                    token = await Authenticate();
@@ -326,6 +410,38 @@ namespace DiscoData2API_Priv.Services
 
         #region Helpers
 
+        /// <summary>
+        /// Extract a value from an Arrow array at a specific row index
+        /// </summary>
+        private static object? GetArrayValue(IArrowArray array, int rowIndex)
+        {
+            return array switch
+            {
+                Int8Array int8Array => int8Array.Values[rowIndex],
+                Int16Array int16Array => int16Array.Values[rowIndex],
+                Int32Array int32Array => int32Array.Values[rowIndex],
+                Int64Array int64Array => int64Array.Values[rowIndex],
+                UInt8Array uint8Array => uint8Array.Values[rowIndex],
+                UInt16Array uint16Array => uint16Array.Values[rowIndex],
+                UInt32Array uint32Array => uint32Array.Values[rowIndex],
+                UInt64Array uint64Array => uint64Array.Values[rowIndex],
+                FloatArray floatArray => floatArray.Values[rowIndex],
+                DoubleArray doubleArray => doubleArray.Values[rowIndex],
+                BooleanArray boolArray => boolArray.GetValue(rowIndex),
+                Decimal128Array decimal128Array => decimal128Array.GetValue(rowIndex) ?? 0,
+                Decimal256Array decimal256Array => decimal256Array.GetString(rowIndex),
+                StringArray stringArray => stringArray.GetString(rowIndex),
+                BinaryArray binaryArray => Convert.ToBase64String(binaryArray.GetBytes(rowIndex).ToArray()),
+                Date32Array date32Array => date32Array.Values[rowIndex],
+                Date64Array date64Array => date64Array.Values[rowIndex],
+                Time32Array time32Array => time32Array.Values[rowIndex],
+                Time64Array time64Array => time64Array.Values[rowIndex],
+                TimestampArray timestampArray => timestampArray.GetValue(rowIndex),
+                NullArray => null,
+                _ => $"Unsupported array type: {array.GetType().Name}"
+            };
+        }
+
          private async Task<string> Authenticate()
         {
             try
@@ -339,10 +455,8 @@ namespace DiscoData2API_Priv.Services
                 HttpClientHandler clientHandler = new HttpClientHandler();
                 clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
 
-                // Pass the handler to httpclient(from you are calling api)
                 // Make the POST request for authentication
                 using var client = new HttpClient(clientHandler);
-                // client.BaseAddress = new Uri($"{_dremioServer}/apiv2/login");
                 using var response = await client.PostAsync($"{_dremioServerAuth}/apiv2/login", content);
                 response.EnsureSuccessStatusCode();
 
@@ -363,57 +477,26 @@ namespace DiscoData2API_Priv.Services
             }
         }
 
-
         private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
         {
-            var data = new List<Dictionary<string, object>>();
+            var data = new List<Dictionary<string, object?>>();
 
             // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
             {
-                var rowData = new Dictionary<string, object>();
+                var rowData = new Dictionary<string, object?>();
                 try
                 {
                     // For each row, iterate over columns
                     foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
                         string columnName = column.field.Name;
-
-                        switch (column.array)
-                        {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
-                            // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                        rowData[columnName] = GetArrayValue(column.array, i);
                     }
                 }
-                catch
+                catch (Exception)
                 {
+                    // Skip problematic rows silently to maintain data integrity
                 }
 
                 data.Add(rowData);
@@ -430,45 +513,14 @@ namespace DiscoData2API_Priv.Services
             // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
             {
-                var rowData = new Dictionary<string, object>();
+                var rowData = new Dictionary<string, object?>();
                 try
                 {
                     // For each row, iterate over columns
                     foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
                         string columnName = column.field.Name;
-
-                        switch (column.array)
-                        {
-                            case Int32Array int32Array:
-                                rowData[columnName] = int32Array.Values[i];
-                                break;
-                            case Int64Array int64Array:
-                                rowData[columnName] = int64Array.Values[i];
-                                break;
-                            case DoubleArray doubleArray:
-                                rowData[columnName] = doubleArray.Values[i];
-                                break;
-                            case Decimal128Array decimal128Array:
-                                rowData[columnName] = decimal128Array.GetValue(i) ?? 0;
-                                break;
-                            case StringArray stringArray:
-                                rowData[columnName] = stringArray.GetString(i);
-                                break;
-                            case Date64Array date64Array:
-                                rowData[columnName] = date64Array.Values[i];
-                                break;
-                            case Date32Array date32Array:
-                                rowData[columnName] = date32Array.Values[i];
-                                break;
-                            case FloatArray floatArray:
-                                rowData[columnName] = floatArray.Values[i];
-                                break;
-                            // Add cases for other array types as needed
-                            default:
-                                rowData[columnName] = "Unsupported array type";
-                                break;
-                        }
+                        rowData[columnName] = GetArrayValue(column.array, i);
                     }
 
                     results.Add(JsonSerializer.Serialize(rowData));
@@ -489,10 +541,6 @@ namespace DiscoData2API_Priv.Services
             // the only endpoint might be the same server we initially queried.
             foreach (var endpoint in info.Endpoints)
             {
-                // We may have multiple locations to choose from. Here we choose the first.
-                //var download_channel = GrpcChannel.ForAddress(endpoint.Locations.First().Uri);
-                //var download_client = new FlightClient(download_channel);
-
                 var stream = flightClient.GetStream(endpoint.Ticket, headers);
 
                 while (await stream.ResponseStream.MoveNext())
