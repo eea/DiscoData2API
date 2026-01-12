@@ -17,7 +17,7 @@ namespace DiscoData2API_Priv.Controllers
             private readonly int _defaultLimit = dremioService._limit;
             private readonly int _timeout = dremioService._timeout;
 
-            [HttpPost("WiseQuery")]
+            [HttpPost("query-execution")]
             [Produces("application/json")]
             public async Task<IActionResult> ExecuteWiseQuery([FromBody] WiseQueryRequest request, CancellationToken cts)
             {
