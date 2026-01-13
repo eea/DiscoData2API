@@ -6,11 +6,10 @@ using System.Text.Json;
 using DiscoData2API.Misc;
 using DiscoData2API.Class;
 
-namespace DiscoData2API_Priv.Controllers
+namespace DiscoData2API.Controllers
 {
       [ApiController]
       [Route("api/[controller]")]
-      [ApiExplorerSettings(IgnoreApi = false)]
       public class DremioController(ILogger<DremioController> logger, DremioService dremioService) : ControllerBase
       {
             private readonly ILogger<DremioController> _logger = logger;
