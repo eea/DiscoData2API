@@ -183,9 +183,9 @@ namespace DiscoData2API.Services
         /// <param name="query">SQL query to execute</param>
         /// <param name="cts">Cancellation token</param>
         /// <returns>Dremio-compatible JSON object with columns and rows</returns>
-        public async Task<object> ExecuteWiseQuery(string query, CancellationToken cts)
+        public async Task<object> ExecuteJsonQuery(string query, CancellationToken cts)
         {
-            _logger.LogInformation($"Start execute WISE query");
+            _logger.LogInformation($"Start execute JSON query");
             var flightConnection = await ConnectArrowFlight(query, cts);
             _logger.LogInformation($"After execute ConnectArrowFlight");
 
