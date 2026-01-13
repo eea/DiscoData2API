@@ -4,8 +4,6 @@ using DiscoData2API.Model;
 using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
-using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
-
 
 namespace DiscoData2API.Controllers
 {
