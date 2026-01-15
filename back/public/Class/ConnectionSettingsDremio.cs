@@ -2,10 +2,33 @@ namespace DiscoData2API.Class
 {
     public class ConnectionSettingsDremio
     {
-        public string? Username { get; set; }
-        public string? Password { get; set; }
-        public string? DremioServer { get; set; }
-        public string? DremioServerAuth { get; set; }
+        public string? Username
+        {
+            get
+            {
+                return System.Environment.GetEnvironmentVariable("DREMIO_USER") ?? string.Empty;
+            }
+        }
+
+        public string? Password {
+            get
+            {
+                return System.Environment.GetEnvironmentVariable("DREMIO_PWD") ?? string.Empty;
+            }
+        }
+        public string? DremioServer {
+            get
+            {
+                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER") ?? string.Empty;
+            }
+        }
+        public string? DremioServerAuth {
+            get
+            {
+                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER_AUTH") ?? string.Empty;
+            }
+
+        }
         public int Limit { get; set; }
         public int Timeout { get; set; }
 

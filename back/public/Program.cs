@@ -1,15 +1,21 @@
-using System.Reflection;
-using DiscoData2API.Services;
 using DiscoData2API.Class;
-using Microsoft.OpenApi.Models;
-using Serilog;
-using Prometheus;
 using DiscoData2API.Misc;
+using DiscoData2API.Services;
+using DotNetEnv;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.OpenApi.Models;
+using Prometheus;
+using Serilog;
 using System.IO.Compression;
+using System.Reflection;
+
+Env.Load("env");
 
 //needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
+
+// Add environment variables to Configuration
+builder.Configuration.AddEnvironmentVariables();
 
 // Configure Serilog for file logging
 Log.Logger = new LoggerConfiguration()
