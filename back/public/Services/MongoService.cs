@@ -47,7 +47,7 @@ namespace DiscoData2API.Services
         {
             try
             {
-                MongoDocument doc = await _collection.Find(p => p.ID == id && p.IsActive).FirstOrDefaultAsync();
+                MongoDocument doc = await _collection.Find(p => p._id == id && p.IsActive).FirstOrDefaultAsync();
 
                 if (doc != null) return  new MongoPublicDocument(doc);
                 throw new ViewNotFoundException();
@@ -55,9 +55,9 @@ namespace DiscoData2API.Services
             }
             catch (Exception ex)
             {
-#pragma warning disable CA2254 // La plantilla debe ser una expresión estática
+#pragma warning disable CA2254 // La plantilla debe ser una expresiï¿½n estï¿½tica
                 _logger.LogError(ex, string.Format("Error while getting document with id {0}", id));
-#pragma warning restore CA2254 // La plantilla debe ser una expresión estática
+#pragma warning restore CA2254 // La plantilla debe ser una expresiï¿½n estï¿½tica
                 throw;
             }
         }
@@ -72,7 +72,7 @@ namespace DiscoData2API.Services
         {
             try
             {
-                MongoDocument result = await _collection.Find(p => p.IsActive && p.ID == id).FirstOrDefaultAsync();
+                MongoDocument result = await _collection.Find(p => p.IsActive && p._id == id).FirstOrDefaultAsync();
                 if (result != null) return result;
                 throw new ViewNotFoundException();
             }

@@ -1,4 +1,5 @@
 using DiscoData2API.Services;
+using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DiscoData2API.Controllers
@@ -13,7 +14,8 @@ namespace DiscoData2API.Controllers
 
             [HttpPost("query-execution")]
             [Produces("application/json")]
-            public async Task<IActionResult> ExecuteJsonQuery([FromBody] WiseQueryRequest request)
+            [ApiExplorerSettings(IgnoreApi = true)]
+            public async Task<IActionResult> ExecuteSqlQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
                   try
