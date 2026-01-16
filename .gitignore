@@ -1,6 +1,12 @@
-﻿################################################################################
-# Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
-################################################################################
+# Claude Code temporary files
+tmpclaude-*
 
-/back/private/env
+# Common .NET ignores
+bin/
+obj/
+*.user
+*.suo
+.vs/
 /back/public/env
+/back/private/env
+
