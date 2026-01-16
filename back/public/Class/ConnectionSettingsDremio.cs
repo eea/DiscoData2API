@@ -13,7 +13,7 @@ namespace DiscoData2API.Class
             get
             {
                 // custom logic when reading
-                return System.Environment.GetEnvironmentVariable("DREMIO_USER") ?? _dremioUser;
+                return Environment.GetEnvironmentVariable("DREMIO_USER") ?? _dremioUser;
             }
             set
             {
@@ -35,7 +35,7 @@ namespace DiscoData2API.Class
             get
             {
                 // custom logic when reading
-                return System.Environment.GetEnvironmentVariable("DREMIO_PWD") ?? _dremioPwd;
+                return Environment.GetEnvironmentVariable("DREMIO_PWD") ?? _dremioPwd;
             }
             set
             {
@@ -57,7 +57,7 @@ namespace DiscoData2API.Class
             get
             {
                 // custom logic when reading
-                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER") ?? _dremioServer;
+                return Environment.GetEnvironmentVariable("DREMIO_SERVER") ?? _dremioServer;
             }
             set
             {
@@ -77,7 +77,7 @@ namespace DiscoData2API.Class
             get
             {
                 // custom logic when reading
-                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER_AUTH") ?? _dremioServerAuth;
+                return Environment.GetEnvironmentVariable("DREMIO_SERVER_AUTH") ?? _dremioServerAuth;
             }
             set
             {

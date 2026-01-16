@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 
 namespace DiscoData2API.Class
 {
@@ -11,7 +10,7 @@ namespace DiscoData2API.Class
             get
             {
                 // custom logic when reading
-                return System.Environment.GetEnvironmentVariable("MONGODB_CONNSTRING") ?? _connstring;
+                return Environment.GetEnvironmentVariable("MONGODB_CONNSTRING") ?? _connstring;
             }
             set
             {
