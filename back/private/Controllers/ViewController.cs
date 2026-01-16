@@ -479,8 +479,8 @@ namespace DiscoData2API_Priv.Controllers
 
                 // Set response headers for streaming
                 Response.ContentType = "application/json";
-                Response.Headers["Cache-Control"] = "no-cache";
-                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                Response.Headers.CacheControl = "no-cache";
+                Response.Headers.XContentTypeOptions = "nosniff";
                 Response.Headers["X-Query-Id"] = queryId;
                 Response.Headers["X-Max-Rows"] = maxRows.ToString();
 

@@ -1,14 +1,21 @@
-using System.Reflection;
-using DiscoData2API_Priv.Services;
 using DiscoData2API_Priv.Class;
-using Microsoft.OpenApi.Models;
-using Serilog;
-using Microsoft.AspNetCore.ResponseCompression;
-using System.IO.Compression;
-using Prometheus;
 using DiscoData2API_Priv.Misc;
+using DiscoData2API_Priv.Services;
+using DotNetEnv;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.OpenApi.Models;
+using Prometheus;
+using Serilog;
+using System.IO.Compression;
+using System.Reflection;
 
+Env.Load("env");
+
+//needs wwwrrot/swagger.yaml to exist
 var builder = WebApplication.CreateBuilder(args);
+
+// Add environment variables to Configuration
+builder.Configuration.AddEnvironmentVariables();
 
 // Allow CORS
 builder.Services.AddCors(options =>
@@ -41,7 +48,7 @@ builder.Services.AddScoped<ParameterSubstitutionService>();
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
-    options.MimeTypes = new[] { "text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition" };
+    options.MimeTypes = ["text/plain", "application/json", "text/json", "application/octet-stream", "Content-Disposition"];
 });
 builder.Services.Configure<GzipCompressionProviderOptions>
    (opt =>
