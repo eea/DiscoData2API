@@ -6,7 +6,6 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API.Services;
 using DiscoData2API.Class;
 
 
