@@ -17,7 +17,7 @@ namespace DiscoData2API.Services
         private readonly ILogger<DremioService> _logger;
         private readonly string? _username; 
         private readonly string? _password;
-        private readonly string? _dremioServer;
+        //private readonly string? _dremioServer;
         private readonly string? _dremioServerAuth;
         private readonly FlightClientPool _flightClientPool;
         private readonly QueryThrottlingService _throttlingService;
