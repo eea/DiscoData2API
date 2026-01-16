@@ -8,9 +8,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest 
+    environment: Development
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Replace secrets in appsettings
+      working-directory:  back/
+      run: |        
+        sed -i "s|__MONGODB_CONNSTRING__|${{ secrets.MONGODB_CONNSTRING }}|g" Configs/appsettings_dev.json
+        sed -i "s|__DREMIO_USER__|${{ secrets.DREMIO_USER }}|g" Configs/appsettings_dev.json
+        sed -i "s|__DREMIO_PWD__|${{ secrets.DREMIO_PWD }}|g" Configs/appsettings_dev.json
+        sed -i "s|__DREMIO_SERVER__|${{ secrets.DREMIO_SERVER }}|g" Configs/appsettings_dev.json
+        sed -i "s|__DREMIO_SERVER_AUTH__|${{ secrets.DREMIO_SERVER_AUTH }}|g" Configs/appsettings_dev.json
       
     - name: Build the Docker image
       working-directory:  back/
