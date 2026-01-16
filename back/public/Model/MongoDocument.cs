@@ -12,17 +12,17 @@ public class MongoDocument
     [BsonRepresentation(BsonType.ObjectId)]
     public string _id { get; set; } = null!;
 
-
-    [BsonElement("id")]
-    public string ID { get; set; } = null!;
-
-
     [BsonElement("name")]
     public string Name { get; set; } = null!;
+
+    [BsonElement("catalog")]
+    public string? Catalog { get; set; }
 
     [BsonElement("description")]
     public string Description { get; set; } = null!;
 
+    [BsonElement("userAdded")]
+    public string? UserAdded { get; set; } = null!;
 
     [BsonElement("isActive")]
     public Boolean IsActive { get; set; }
@@ -41,6 +41,10 @@ public class MongoDocument
 
     [BsonElement("parameters")]
     public List<ViewParameter>? Parameters { get; set; } = null!;
+
+    [BsonElement("projectId")]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string? ProjectId { get; set; }
 
 }
 
@@ -68,7 +72,7 @@ public class MongoPublicDocument
 
     public MongoPublicDocument(MongoDocument doc)
     {
-        ID = doc.ID;
+        ID = doc._id;
         Name = doc.Name;
         Description = doc.Description;
         IsActive = doc.IsActive;
@@ -83,18 +87,69 @@ public class MongoPublicDocument
 
 public class Field
 {
+    private string? _type = string.Empty;
+    private string? _size = string.Empty;
+
     [BsonElement("name")]
     public string Name { get; set; } = null!;
 
     [BsonElement("type")]
-    public string Type { get; set; } = null!;
+    public string Type
+    {
+        get { return string.IsNullOrEmpty(_type) ? string.Empty : _type; }
+        set
+        {
+            _type = "string";
+            switch (value.ToUpper())
+            {
+                case "CHARACTER":
+                case "CHARACTER VARYING":
+                    _type = "string";
+                    break;
+                case "INTEGER":
+                    _type = "int32";
+                    _size = "4";
+                    break;
+                case "BIGINT":
+                    _type = "int64";
+                    _size = "8";
+                    break;
+                case "DOUBLE":
+                case "FLOAT":
+                case "FLOAT32":
+                case "FLOAT64":
+                case "DECIMAL":
+                case "DECIMAL128":
+                case "DECIMAL256":
+                    _type = "float64";
+                    _size = "8";
+                    break;
+                case "geometry":
+                    _type = "geometry";
+                    break;
+                case "BINARY":
+                case "BINARY VARYING":
+                    _type = "binary";
+                    break;
 
+                default:
+                    _type = value.ToLower();
+                    break;
+            }
+        }
+    }
 
     [BsonElement("isNullable")]
     public bool IsNullable { get; set; } = true!;
 
     [BsonElement("columnSize")]
-    public string? ColumnSize { get; set; }
+    public string? ColumnSize {
+        get { return _size; }
+        set
+        {
+            _size = value;
+        }
+    }
 
     [BsonIgnoreIfNull]
     [BsonElement("description")]
