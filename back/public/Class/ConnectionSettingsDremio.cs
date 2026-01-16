@@ -2,33 +2,99 @@ namespace DiscoData2API.Class
 {
     public class ConnectionSettingsDremio
     {
+        private string _dremioServer = string.Empty;
+        private string _dremioServerAuth = string.Empty;
+        private string _dremioUser = string.Empty;
+        private string _dremioPwd = string.Empty;
+
+
         public string? Username
         {
             get
             {
-                return System.Environment.GetEnvironmentVariable("DREMIO_USER") ?? string.Empty;
+                // custom logic when reading
+                return System.Environment.GetEnvironmentVariable("DREMIO_USER") ?? _dremioUser;
             }
+            set
+            {
+                // custom logic when setting
+                Console.WriteLine($"Setting Name to {value}");
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    _dremioUser = value;
+                }
+                else
+                {
+                    throw new ArgumentException("DremioUser cannot be empty");
+                }
+            }
+
         }
 
         public string? Password {
             get
             {
-                return System.Environment.GetEnvironmentVariable("DREMIO_PWD") ?? string.Empty;
+                // custom logic when reading
+                return System.Environment.GetEnvironmentVariable("DREMIO_PWD") ?? _dremioPwd;
             }
+            set
+            {
+                // custom logic when setting
+                Console.WriteLine($"Setting Name to {value}");
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    _dremioPwd = value;
+                }
+                else
+                {
+                    throw new ArgumentException("DremioPwd cannot be empty");
+                }
+            }
+
+
         }
         public string? DremioServer {
             get
             {
-                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER") ?? string.Empty;
+                // custom logic when reading
+                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER") ?? _dremioServer;
+            }
+            set
+            {
+                // custom logic when setting
+                Console.WriteLine($"Setting Name to {value}");
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    _dremioServer = value;
+                }
+                else
+                {
+                    throw new ArgumentException("DremioServer cannot be empty");
+                }
             }
         }
         public string? DremioServerAuth {
             get
             {
-                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER_AUTH") ?? string.Empty;
+                // custom logic when reading
+                return System.Environment.GetEnvironmentVariable("DREMIO_SERVER_AUTH") ?? _dremioServerAuth;
             }
-
+            set
+            {
+                // custom logic when setting
+                Console.WriteLine($"Setting Name to {value}");
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    _dremioServerAuth = value;
+                }
+                else
+                {
+                    throw new ArgumentException("DremioServer cannot be empty");
+                }
+            }
         }
+
+
         public int Limit { get; set; }
         public int Timeout { get; set; }
 
