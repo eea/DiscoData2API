@@ -7,3 +7,5 @@ obj/
 *.user
 *.suo
 .vs/
+/back/public/env
+/back/private/env

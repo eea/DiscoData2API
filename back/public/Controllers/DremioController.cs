@@ -10,7 +10,7 @@ namespace DiscoData2API.Controllers
       {
             private readonly ILogger<DremioController> _logger = logger;
             private readonly DremioService _dremioService = dremioService;
-             private readonly int _timeout = dremioService._timeout;
+            private readonly int _timeout = dremioService._timeout;
 
             [HttpPost("query-execution")]
             [Produces("application/json")]
