@@ -1,0 +1,11 @@
+# Claude Code temporary files
+tmpclaude-*
+
+# Common .NET ignores
+bin/
+obj/
+*.user
+*.suo
+.vs/
+/back/public/env
+/back/private/env

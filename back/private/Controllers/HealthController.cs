@@ -6,6 +6,7 @@ namespace DiscoData2API_Priv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+     [ApiExplorerSettings(IgnoreApi = true)]
     public class HealthController : ControllerBase
     {
         private readonly ILogger<HealthController> _logger;
