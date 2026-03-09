@@ -40,7 +40,18 @@ namespace DiscoData2API_Priv.Services
             _circuitBreaker = circuitBreakerService.GetCircuitBreaker("dremio-connection", 3, TimeSpan.FromMinutes(2));
         }
 
-
+        public async Task<(bool reachable, string message)> CheckHealth()
+        {
+            try
+            {
+                await Authenticate();
+                return (true, "Dremio reachable");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
 
         /// <summary>
         /// Execute a query on Dremio and return the results as a JSON string
@@ -146,7 +157,7 @@ namespace DiscoData2API_Priv.Services
                     await Task.Delay(TimeSpan.FromMilliseconds(1), cts);
                 }
 
-                EndStream:
+            EndStream:
                 await writer.WriteAsync("]");
                 await writer.FlushAsync();
 
@@ -371,8 +382,8 @@ namespace DiscoData2API_Priv.Services
 
                 try
                 {
-                   token = await Authenticate();
-                   headers = new Metadata { { "authorization", $"Bearer {token}" } };
+                    token = await Authenticate();
+                    headers = new Metadata { { "authorization", $"Bearer {token}" } };
                 }
                 catch
                 {
@@ -442,7 +453,7 @@ namespace DiscoData2API_Priv.Services
             };
         }
 
-         private async Task<string> Authenticate()
+        private async Task<string> Authenticate()
         {
             try
             {
@@ -468,7 +479,7 @@ namespace DiscoData2API_Priv.Services
                 if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
                 {
                     throw new Exception("Failed to authenticate with Dremio. Token not received.");
-                }                
+                }
                 return loginResponse.Token;
 
             }
@@ -551,7 +562,7 @@ namespace DiscoData2API_Priv.Services
                 }
             }
         }
-  
+
         #endregion
     }
 }

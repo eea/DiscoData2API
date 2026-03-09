@@ -17,6 +17,14 @@ namespace DiscoData2API_Priv.Controllers
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
 
+        [HttpGet("health")]
+        [Produces("application/json")]
+        public async Task<IActionResult> HealthCheck()
+        {
+            var (reachable, message) = await dremioService.CheckHealth();
+            var status = new { dremio = reachable ? "ok" : "unreachable", message };
+            return reachable ? Ok(status) : StatusCode(503, status);
+        }
 
         [HttpGet("GetSchema")]
         public async Task<ActionResult<string>> GetSchema(string origin)
@@ -133,7 +141,7 @@ namespace DiscoData2API_Priv.Controllers
                 return StatusCode(StatusCodes.Status400BadRequest, errmsg);
             }
         }
-        
+
         [HttpPost("WiseQuery")]
         [Produces("application/json")]
         public async Task<IActionResult> ExecuteWiseQuery([FromBody] QueryRequest request, CancellationToken cts)
@@ -160,7 +168,7 @@ namespace DiscoData2API_Priv.Controllers
         {
             public string Query { get; set; }
         }
-        
+
         #region Helper Methods
         private static string FixMalformedJson(string json)
         {
