@@ -485,6 +485,19 @@ namespace DiscoData2API.Services
             return results;
         }
 
+        public async Task<(bool reachable, string message)> CheckHealth()
+        {
+            try
+            {
+                await Authenticate();
+                return (true, "Dremio reachable");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
         public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers, FlightClient flightClient)
         {
             // There might be multiple endpoints hosting part of the data. In simple services,
