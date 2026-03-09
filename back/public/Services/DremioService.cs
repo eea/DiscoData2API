@@ -6,7 +6,6 @@ using Apache.Arrow.Flight.Client;
 using Grpc.Core;
 using System.Text;
 using Microsoft.Extensions.Options;
-using DiscoData2API.Services;
 using DiscoData2API.Class;
 
 
@@ -279,14 +278,14 @@ namespace DiscoData2API.Services
             // Enforce maximum result set size
             if (requestedLimit > _settings.MaxResultSetSize)
             {
-                _logger.LogWarning($"Requested limit {requestedLimit} exceeds max result set size {_settings.MaxResultSetSize}, applying limit");
+                _logger.LogWarning("Requested limit {} exceeds max result set size {}, applying limit", requestedLimit, _settings.MaxResultSetSize);
                 return _settings.MaxResultSetSize;
             }
 
             // Enforce maximum page size for reasonable limits
             if (requestedLimit > _settings.MaxPageSize)
             {
-                _logger.LogInformation($"Requested limit {requestedLimit} exceeds max page size {_settings.MaxPageSize}, applying page limit");
+                _logger.LogInformation("Requested limit {} exceeds max page size {}, applying page limit", requestedLimit, _settings.MaxPageSize);
                 return _settings.MaxPageSize;
             }
 
@@ -318,10 +317,10 @@ namespace DiscoData2API.Services
         private async Task<(FlightInfo?, Metadata, FlightClient)> ConnectArrowFlight(string query, CancellationToken cts)
         {
 
-            string token = string.Empty;
-            Metadata? headers = null;
-            FlightDescriptor? descriptor = null;
-            FlightInfo? flightInfo = null;
+            string token;
+            Metadata? headers;
+            FlightDescriptor? descriptor;
+            FlightInfo? flightInfo;
             //checked first if we can connect to dremio
             try
             {
@@ -401,8 +400,10 @@ namespace DiscoData2API.Services
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
 
-                HttpClientHandler clientHandler = new HttpClientHandler();
-                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+                HttpClientHandler clientHandler = new()
+                {
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
+                };
 
                 // Make the POST request for authentication
                 using var client = new HttpClient(clientHandler);
@@ -482,6 +483,19 @@ namespace DiscoData2API.Services
             }
 
             return results;
+        }
+
+        public async Task<(bool reachable, string message)> CheckHealth()
+        {
+            try
+            {
+                await Authenticate();
+                return (true, "Dremio reachable");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
         }
 
         public async IAsyncEnumerable<RecordBatch> StreamRecordBatches(FlightInfo info, Metadata headers, FlightClient flightClient)

@@ -68,7 +68,7 @@ namespace DiscoData2API_Priv.Services
 
                 try
                 {
-                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    var action = new FlightAction("Stop Flight Server", []);
                     using var call = flightClient.DoAction(action);
                 }
                 catch (Exception ex)
@@ -157,7 +157,7 @@ namespace DiscoData2API_Priv.Services
                 // Clean up flight connection
                 try
                 {
-                    var action = new FlightAction("Stop Flight Server", new byte[0]);
+                    var action = new FlightAction("Stop Flight Server", []);
                     using var call = flightClient.DoAction(action);
                 }
                 catch (Exception ex)
@@ -452,8 +452,10 @@ namespace DiscoData2API_Priv.Services
                 var content = new StringContent(jsonLoginData, Encoding.UTF8, "application/json");
 
 
-                HttpClientHandler clientHandler = new HttpClientHandler();
-                clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+                HttpClientHandler clientHandler = new()
+                {
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
+                };
 
                 // Make the POST request for authentication
                 using var client = new HttpClient(clientHandler);

@@ -10,11 +10,20 @@ namespace DiscoData2API.Controllers
       {
             private readonly ILogger<DremioController> _logger = logger;
             private readonly DremioService _dremioService = dremioService;
-             private readonly int _timeout = dremioService._timeout;
+            private readonly int _timeout = dremioService._timeout;
+
+            [HttpGet("health")]
+            [Produces("application/json")]
+            public async Task<IActionResult> HealthCheck()
+            {
+                var (reachable, message) = await _dremioService.CheckHealth();
+                var status = new { dremio = reachable ? "ok" : "unreachable", message };
+                return reachable ? Ok(status) : StatusCode(503, status);
+            }
 
             [HttpPost("query-execution")]
             [Produces("application/json")]
-            [ApiExplorerSettings(IgnoreApi = true)]
+            [ApiExplorerSettings(IgnoreApi = false)]
             public async Task<IActionResult> ExecuteSqlQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
