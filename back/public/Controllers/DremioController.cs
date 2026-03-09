@@ -23,7 +23,7 @@ namespace DiscoData2API.Controllers
 
             [HttpPost("query-execution")]
             [Produces("application/json")]
-            [ApiExplorerSettings(IgnoreApi = false)]
+            [ApiExplorerSettings(IgnoreApi = true)]
             public async Task<IActionResult> ExecuteSqlQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
