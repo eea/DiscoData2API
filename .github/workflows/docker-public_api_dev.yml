@@ -17,26 +17,26 @@ jobs:
     # ---- Replace secrets safely using jq  (special characters) ----
     - name: Replace secrets in appsettings
       working-directory:  back/
-        run: |
-          jq \
-            --arg mongo "$MONGODB_CONNSTRING" \
-            --arg duser "$DREMIO_USER" \
-            --arg dpwd "$DREMIO_PWD" \
-            --arg dserver "$DREMIO_SERVER" \
-            --arg dauth "$DREMIO_SERVER_AUTH" \
-            '.ConnectionStrings.Mongo = $mongo |
-             .DremioSettings.Username = $duser |
-             .DremioSettings.Password = $dpwd |
-             .DremioSettings.DremioServer = $dserver |
-             .DremioSettings.DremioServerAuth = $dauth' \
-            Configs/appsettings_dev.json > Configs/appsettings_dev.tmp.json && \
-          mv Configs/appsettings_dev.tmp.json Configs/appsettings_dev.json
-        env:
-          MONGODB_CONNSTRING: ${{ secrets.MONGODB_CONNSTRING }}
-          DREMIO_USER: ${{ secrets.DREMIO_USER }}
-          DREMIO_PWD: ${{ secrets.DREMIO_PWD }}
-          DREMIO_SERVER: ${{ secrets.DREMIO_SERVER }}
-          DREMIO_SERVER_AUTH: ${{ secrets.DREMIO_SERVER_AUTH }}
+      run: |
+        jq \
+          --arg mongo "$MONGODB_CONNSTRING" \
+          --arg duser "$DREMIO_USER" \
+          --arg dpwd "$DREMIO_PWD" \
+          --arg dserver "$DREMIO_SERVER" \
+          --arg dauth "$DREMIO_SERVER_AUTH" \
+          '.ConnectionStrings.Mongo = $mongo |
+           .DremioSettings.Username = $duser |
+           .DremioSettings.Password = $dpwd |
+           .DremioSettings.DremioServer = $dserver |
+           .DremioSettings.DremioServerAuth = $dauth' \
+          Configs/appsettings_dev.json > Configs/appsettings_dev.tmp.json && \
+        mv Configs/appsettings_dev.tmp.json Configs/appsettings_dev.json
+      env:
+        MONGODB_CONNSTRING: ${{ secrets.MONGODB_CONNSTRING }}
+        DREMIO_USER: ${{ secrets.DREMIO_USER }}
+        DREMIO_PWD: ${{ secrets.DREMIO_PWD }}
+        DREMIO_SERVER: ${{ secrets.DREMIO_SERVER }}
+        DREMIO_SERVER_AUTH: ${{ secrets.DREMIO_SERVER_AUTH }}
           
           
     - name: Build the Docker image
