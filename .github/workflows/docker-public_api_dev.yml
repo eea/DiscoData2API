@@ -24,7 +24,7 @@ jobs:
           --arg dpwd "$DREMIO_PWD" \
           --arg dserver "$DREMIO_SERVER" \
           --arg dauth "$DREMIO_SERVER_AUTH" \
-          '.ConnectionStrings.Mongo = $mongo |
+          '.MongoSettings.ConnectionString = $mongo |
            .DremioSettings.Username = $duser |
            .DremioSettings.Password = $dpwd |
            .DremioSettings.DremioServer = $dserver |
