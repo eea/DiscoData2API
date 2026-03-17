@@ -35,7 +35,6 @@ ENV ASPNETCORE_URLS=http://+:5243
 
 # copy appropriate environment configuration
 COPY Configs/appsettings_$ENVIRONMENT.json  appsettings.json
-COPY Configs/appsettings_$ENVIRONMENT.json  appsettings_AA1.js
 
 
 ENTRYPOINT ["dotnet", "DiscoData2API_Priv.dll"]
