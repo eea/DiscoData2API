@@ -3,8 +3,8 @@ name: Public API Development
 on:
   push:
     branches: [ "main" ]
-    #paths:
-    #  - back/private/**    
+    paths:
+      - back/private/**    
 jobs:
   build:
     runs-on: ubuntu-latest 
