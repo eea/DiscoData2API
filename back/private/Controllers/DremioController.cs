@@ -17,6 +17,7 @@ namespace DiscoData2API_Priv.Controllers
         private readonly int _defaultLimit = dremioService._limit;
         private readonly int _timeout = dremioService._timeout;
 
+        /// <summary>Returns Dremio connection status.</summary>
         [HttpGet("health")]
         [Produces("application/json")]
         public async Task<IActionResult> HealthCheck()
@@ -26,6 +27,8 @@ namespace DiscoData2API_Priv.Controllers
             return reachable ? Ok(status) : StatusCode(503, status);
         }
 
+        /// <summary>Returns schemas matching the given origin filter.</summary>
+        /// <param name="origin">Partial schema name to filter on.</param>
         [HttpGet("GetSchema")]
         public async Task<ActionResult<string>> GetSchema(string origin)
         {
@@ -68,6 +71,8 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
 
+        /// <summary>Returns all tables in the given schema.</summary>
+        /// <param name="schema">Full schema path (e.g. <c>my_source.my_folder</c>).</param>
         [HttpGet("GetTable/{schema}")]
         public async Task<List<DremioTable>> GetTable(string? schema)
         {
@@ -97,6 +102,9 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
 
+        /// <summary>Returns all columns for a given schema and table.</summary>
+        /// <param name="schema">Full schema path.</param>
+        /// <param name="table">Table name.</param>
         [HttpGet("GetColumn/{schema}/{table}")]
         public async Task<List<DremioColumn>> GetColumn(string? schema, string? table)
         {
@@ -115,8 +123,13 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
 
-        [HttpPost("RunQuery")]
-        public async Task<ActionResult<string>> RunQuery([FromBody] DremioJob request)
+        /// <summary>Executes a SQL query and returns results as a flat JSON array (one object per row). Suitable for datagrid binding.</summary>
+        /// <remarks>Subject to the configured query timeout.</remarks>
+        [HttpPost("ExecuteQuery")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status408RequestTimeout)]
+        public async Task<ActionResult<string>> ExecuteQuery([FromBody] DremioJob request)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout)); // Creates a CancellationTokenSource with a 5-second timeout
             try
@@ -142,9 +155,13 @@ namespace DiscoData2API_Priv.Controllers
             }
         }
 
-        [HttpPost("WiseQuery")]
+        /// <summary>Executes a SQL query and returns results in Dremio's native format: <c>columns</c> array + <c>rows</c> array with <c>{ "v": value }</c> cells.</summary>
+        [HttpPost("ExecuteRawQuery")]
         [Produces("application/json")]
-        public async Task<IActionResult> ExecuteWiseQuery([FromBody] QueryRequest request, CancellationToken cts)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExecuteRawQuery([FromBody] QueryRequest request, CancellationToken cts)
         {
             try
             {
@@ -153,7 +170,7 @@ namespace DiscoData2API_Priv.Controllers
                     return BadRequest(new { error = "Query cannot be empty" });
                 }
 
-                var result = await dremioService.ExecuteWiseQuery(request.Query, cts);
+                var result = await dremioService.ExecuteRawQuery(request.Query, cts);
                 return Ok(result);
             }
             catch (Exception ex)
