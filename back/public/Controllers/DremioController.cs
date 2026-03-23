@@ -21,10 +21,11 @@ namespace DiscoData2API.Controllers
                 return reachable ? Ok(status) : StatusCode(503, status);
             }
 
-            [HttpPost("query-execution")]
+            /// <summary>Executes a SQL query and returns results in Dremio's native format: <c>columns</c> array + <c>rows</c> array with <c>{ "v": value }</c> cells.</summary>
+            [HttpPost("ExecuteRawQuery")]
             [Produces("application/json")]
-            [ApiExplorerSettings(IgnoreApi = true)]
-            public async Task<IActionResult> ExecuteSqlQuery([FromBody] WiseQueryRequest request)
+            [ApiExplorerSettings(IgnoreApi = false)]
+            public async Task<IActionResult> ExecuteRawQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
                   try
@@ -34,7 +35,7 @@ namespace DiscoData2API.Controllers
                               return BadRequest(new { error = "Query cannot be empty" });
                         }
 
-                        var result = await _dremioService.ExecuteJsonQuery(request.Query, cts.Token);
+                        var result = await _dremioService.ExecuteRawQuery(request.Query, cts.Token);
                         return Ok(result);
                   }
                   catch (Exception ex)
