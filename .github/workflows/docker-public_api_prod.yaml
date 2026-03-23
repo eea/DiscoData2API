@@ -9,19 +9,37 @@ jobs:
   build:
     runs-on: ubuntu-latest 
     environment: Production
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       
     - name: Replace secrets in appsettings
       working-directory:  back/
-      run: |        
-        sed -i "s|__MONGODB_CONNSTRING__|${{ secrets.MONGODB_CONNSTRING }}|g" Configs/appsettings_prod.json
-        sed -i "s|__DREMIO_USER__|${{ secrets.DREMIO_USER }}|g" Configs/appsettings_prod.json
-        sed -i "s|__DREMIO_PWD__|${{ secrets.DREMIO_PWD }}|g" Configs/appsettings_prod.json
-        sed -i "s|__DREMIO_SERVER__|${{ secrets.DREMIO_SERVER }}|g" Configs/appsettings_prod.json
-        sed -i "s|__DREMIO_SERVER_AUTH__|${{ secrets.DREMIO_SERVER_AUTH }}|g" Configs/appsettings_prod.json      
+      run: |    
+        jq \
+          --arg mongo "$MONGODB_CONNSTRING" \
+          --arg duser "$DREMIO_USER" \
+          --arg dpwd "$DREMIO_PWD" \
+          --arg dserver "$DREMIO_SERVER" \
+          --arg dauth "$DREMIO_SERVER_AUTH" \
+          '.MongoSettings.ConnectionString = $mongo |
+           .DremioSettings.Username = $duser |
+           .DremioSettings.Password = $dpwd |
+           .DremioSettings.DremioServer = $dserver |
+           .DremioSettings.DremioServerAuth = $dauth' \
+          Configs/appsettings_prod.json > Configs/appsettings_prod.tmp.json && \
+        mv Configs/appsettings_prod.tmp.json Configs/appsettings_prod.json      
       
+      env:
+        MONGODB_CONNSTRING: ${{ secrets.MONGODB_CONNSTRING }}
+        DREMIO_USER: ${{ secrets.DREMIO_USER }}
+        DREMIO_PWD: ${{ secrets.DREMIO_PWD }}
+        DREMIO_SERVER: ${{ secrets.DREMIO_SERVER }}
+        DREMIO_SERVER_AUTH: ${{ secrets.DREMIO_SERVER_AUTH }}
+
     - name: Build the Docker image
       working-directory:  back/
       run: docker build -f public/Dockerfile  --build-arg ENVIRONMENT=prod  -t txalaparta/disco-data-api_prod:latest .
