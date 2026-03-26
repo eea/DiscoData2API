@@ -24,7 +24,7 @@ namespace DiscoData2API.Controllers
             /// <summary>Executes a SQL query and returns results in Dremio's native format: <c>columns</c> array + <c>rows</c> array with <c>{ "v": value }</c> cells.</summary>
             [HttpPost("ExecuteRawQuery")]
             [Produces("application/json")]
-            [ApiExplorerSettings(IgnoreApi = false)]
+            [ApiExplorerSettings(IgnoreApi = true)]
             public async Task<IActionResult> ExecuteRawQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
