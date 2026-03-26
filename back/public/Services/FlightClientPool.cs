@@ -93,6 +93,15 @@ namespace DiscoData2API.Services
             return CreateFlightClient();
         }
 
+        public void DiscardClient(FlightClient client)
+        {
+            if (client == null)
+                return;
+
+            _clientLastUsed.TryRemove(client, out _);
+            _logger.LogWarning("Discarded stale FlightClient from pool");
+        }
+
         public void ReturnClient(FlightClient client)
         {
             if (_disposed || client == null)

@@ -336,18 +336,37 @@ namespace DiscoData2API.Services
                 throw new Exception("Cannot connect to Dremio server");
 
 
+            // Prepare the FlightDescriptor for the query
+            descriptor = FlightDescriptor.CreateCommandDescriptor(query);
+
             // Get client from pool
             var flightClient = _flightClientPool.GetClient();
 
             try
             {
-                // Prepare the FlightDescriptor for the query
-                descriptor = FlightDescriptor.CreateCommandDescriptor(query);
-
                 // Fetch FlightInfo for the query
                 flightInfo = await flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
                 _logger.LogInformation($"ConnectArrowFlight completed successfully");
                 return (flightInfo, headers, flightClient);
+            }
+            catch (Grpc.Core.RpcException ex) when (ex.Message.Contains("userSession") || ex.Status.StatusCode == Grpc.Core.StatusCode.Unauthenticated)
+            {
+                // Stale pooled connection — discard it and retry once with a fresh client
+                _logger.LogWarning("Stale FlightClient detected (session expired), retrying with fresh client");
+                _flightClientPool.DiscardClient(flightClient);
+
+                flightClient = _flightClientPool.GetClient();
+                try
+                {
+                    flightInfo = await flightClient.GetInfo(descriptor, headers).ResponseAsync.WaitAsync(cts);
+                    _logger.LogInformation("ConnectArrowFlight completed successfully on retry");
+                    return (flightInfo, headers, flightClient);
+                }
+                catch
+                {
+                    _flightClientPool.ReturnClient(flightClient);
+                    throw;
+                }
             }
             catch
             {
