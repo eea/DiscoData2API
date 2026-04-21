@@ -44,8 +44,6 @@ namespace DiscoData2API.Services
             _dremioCircuitBreaker = _circuitBreakerService.GetCircuitBreaker("DremioService", 5, TimeSpan.FromMinutes(2));
         }
 
-
-
         /// <summary>
         /// Execute a query on Dremio and return the results as a JSON string
         /// </summary>
@@ -61,14 +59,14 @@ namespace DiscoData2API.Services
             FlightClient? flightClient = flightConnection.Item3;
             try
             {
-                var allResults = new StringBuilder("[");
+                var allRows = new List<Dictionary<string, object?>>();
                 await foreach (var batch in StreamRecordBatches(flightConnection.Item1, flightConnection.Item2, flightClient))
                 {
-                    allResults.Append(ConvertRecordBatchToJson(batch));
+                    CollectRecordBatchRows(batch, allRows);
                     await Task.Delay(TimeSpan.FromMilliseconds(5), cts);
                 }
                 _logger.LogInformation($"After query result");
-                allResults.Append(']');
+                var allResults = new StringBuilder(JsonSerializer.Serialize(allRows));
 
                 try
                 {
@@ -409,6 +407,61 @@ namespace DiscoData2API.Services
             };
         }
 
+        #region REST API
+
+        private static readonly HttpClientHandler _httpClientHandler = new()
+        {
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+        };
+        private static readonly HttpClient _httpClient = new(_httpClientHandler);
+        private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+        public async Task<T> ApiGet<T>(string endpoint)
+        {
+            var token = await Authenticate();
+            var url = $"{_dremioServerAuth}/api/v3/{endpoint}";
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            if (typeof(T) == typeof(string))
+                return (T)Convert.ChangeType(json, typeof(T));
+
+            return JsonSerializer.Deserialize<T>(json, _jsonOptions)!;
+        }
+
+        public async Task<T?> ApiPost<T>(string endpoint, object body)
+        {
+            var token = await Authenticate();
+            var url = $"{_dremioServerAuth}/api/v3/{endpoint}";
+            var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Content = content;
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            return string.IsNullOrWhiteSpace(json) ? default : JsonSerializer.Deserialize<T>(json);
+        }
+
+        public async Task ApiDelete(string endpoint)
+        {
+            var token = await Authenticate();
+            var url = $"{_dremioServerAuth}/api/v3/{endpoint}";
+            using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+
+        #endregion
+
         private async Task<string> Authenticate()
         {
             try
@@ -446,17 +499,13 @@ namespace DiscoData2API.Services
             }
         }
 
-        private static string ConvertRecordBatchToJson(RecordBatch recordBatch)
+        private static void CollectRecordBatchRows(RecordBatch recordBatch, List<Dictionary<string, object?>> data)
         {
-            var data = new List<Dictionary<string, object?>>();
-
-            // Iterate over rows first
             for (int i = 0; i < recordBatch.Length; i++)
             {
                 var rowData = new Dictionary<string, object?>();
                 try
                 {
-                    // For each row, iterate over columns
                     foreach (var column in recordBatch.Schema.FieldsList.Zip(recordBatch.Arrays, (field, array) => new { field, array }))
                     {
                         string columnName = column.field.Name;
@@ -470,9 +519,6 @@ namespace DiscoData2API.Services
 
                 data.Add(rowData);
             }
-
-
-            return JsonSerializer.Serialize(data).Replace("[", "").Replace("]", "");
         }
 
         private static List<string> ConvertRecordBatchToJsonArray(RecordBatch recordBatch)
