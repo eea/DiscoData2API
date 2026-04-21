@@ -33,7 +33,6 @@ builder.Services.AddSingleton<CircuitBreakerService>();
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
 builder.Services.AddSingleton<DremioServiceBeta>();
-builder.Services.AddScoped<ParameterSubstitutionService>();
 builder.Services.UseHttpClientMetrics();
 
 builder.Services.AddResponseCompression(options =>
@@ -57,10 +56,10 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "DiscoData API (Public)",
-        Version = "v1.0",
-        Description = @"Public API for Querying DataHub DiscoData,<br>
-        This API allows you to retrieve a catalog of available Views (SQL-based queries). <br>
-        To fetch data, use the unique identifier associated with a specific query.",
+        Version = "v2.0",
+        Description = @"Public API for Querying Dremio DiscoData.<br>
+        This API allows you to browse folders and Virtual Datasets (VDS) available in the DiscoData Gold space, inspect their schema, and query them with optional field selection and filters.<br>
+        <strong>Note:</strong> The legacy Views endpoints are deprecated and will be removed in a future release. Use the <em>/api/data-product</em> endpoints instead.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";

@@ -1,6 +1,4 @@
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
 
 namespace DiscoData2API.Class
 {
@@ -12,6 +10,12 @@ namespace DiscoData2API.Class
         public FilterDefinition[]? Filters { get; set; }
         [DefaultValue(150)]
         public int? Limit { get; set; }
+        [DefaultValue(0)]
+        public int? Offset { get; set; }
+        [DefaultValue(typeof(string[]), "")]
+        public string[]? GroupBy { get; set; }
+        [DefaultValue(typeof(AggregateDefinition[]), "")]
+        public AggregateDefinition[]? Aggregates { get; set; }
 
     }
 
@@ -29,64 +33,25 @@ namespace DiscoData2API.Class
         [DefaultValue(typeof(string), "AND")]
         public string Concat { get; set; } = "AND";
 
-        public string BuildFilterString()
-        {
-            StringBuilder filter_query = new();
-
-            // Concatenate filters 
-            filter_query.AppendFormat(" {0} (", Concat);
-            filter_query.AppendFormat("{0} ", FieldName);
-
-            filter_query.AppendFormat("{0} ", Condition);
-
-            switch (Condition.ToUpper().Trim())
-            {
-                case "BETWEEN":
-                    filter_query.AppendFormat("{0} ", string.Join(" AND ", Values));
-                    break;
-                case "IN":
-                    filter_query.AppendFormat("( {0} )", string.Join(", ", Values));
-                    break;
-                default:
-                    filter_query.Append(string.Join(", ", Values));
-                    break;
-            }
-            filter_query.Append(") ");
-
-            return filter_query.ToString();
-        }
-
     }
 
-    /// <summary>
-    /// Unified request class for executing queries with optional parameters, filters, and fields selection
-    /// </summary>
-    public class QueryExecutionRequest
+    public class AggregateDefinition
     {
-        /// <summary>
-        /// Query parameters for substitution in parameterized queries
-        /// </summary>
-        [DefaultValue(typeof(Dictionary<string, object>), "")]
-        public Dictionary<string, object>? Parameters { get; set; }
+        /// <summary>Aggregate function: COUNT, SUM, AVG, MIN, MAX</summary>
+        [DefaultValue("COUNT")]
+        public required string Function { get; set; }
 
-        /// <summary>
-        /// Fields to select from the query results
-        /// </summary>
-        [DefaultValue(typeof(string[]), "")]
-        public string[]? Fields { get; set; }
+        /// <summary>Column to aggregate (use * for COUNT)</summary>
+        [DefaultValue("*")]
+        public required string Field { get; set; }
 
-        /// <summary>
-        /// Additional filters to apply to the query
-        /// </summary>
-        [DefaultValue(typeof(FilterDefinition[]), "")]
-        public FilterDefinition[]? Filters { get; set; }
+        /// <summary>Alias for the result column</summary>
+        [DefaultValue("")]
+        public string? Alias { get; set; }
 
-        /// <summary>
-        /// Maximum number of rows to return
-        /// </summary>
-        [DefaultValue(150)]
-        public int? Limit { get; set; }
+        /// <summary>Granularity for DATE_TRUNC: month, year, day, quarter, week</summary>
+        [DefaultValue("")]
+        public string? Granularity { get; set; }
     }
-
 
 }

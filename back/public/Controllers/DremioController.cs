@@ -5,26 +5,17 @@ using Microsoft.AspNetCore.Mvc;
 namespace DiscoData2API.Controllers
 {
       [ApiController]
-      [Route("api/[controller]")]
+      [Route("api/dremio")]
       public class DremioController(ILogger<DremioController> logger, DremioService dremioService) : ControllerBase
       {
             private readonly ILogger<DremioController> _logger = logger;
             private readonly DremioService _dremioService = dremioService;
             private readonly int _timeout = dremioService._timeout;
 
-            [HttpGet("health")]
-            [Produces("application/json")]
-            public async Task<IActionResult> HealthCheck()
-            {
-                var (reachable, message) = await _dremioService.CheckHealth();
-                var status = new { dremio = reachable ? "ok" : "unreachable", message };
-                return reachable ? Ok(status) : StatusCode(503, status);
-            }
-
             /// <summary>Executes a SQL query and returns results in Dremio's native format: <c>columns</c> array + <c>rows</c> array with <c>{ "v": value }</c> cells.</summary>
-            [HttpPost("ExecuteRawQuery")]
+            [HttpPost("execute-raw-query")]
             [Produces("application/json")]
-            [ApiExplorerSettings(IgnoreApi = true)]
+            [ApiExplorerSettings(IgnoreApi = false)]
             public async Task<IActionResult> ExecuteRawQuery([FromBody] WiseQueryRequest request)
             {
                   using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
