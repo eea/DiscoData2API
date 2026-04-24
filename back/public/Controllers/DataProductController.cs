@@ -1,14 +1,10 @@
 using DiscoData2API.Services;
 using DiscoData2API.Class;
-using DiscoData2API.Model;
 using DiscoData2API.Misc;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MongoDB.Bson;
-using System.ComponentModel.DataAnnotations;
-using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace DiscoData2API.Controllers
 {
@@ -70,7 +66,7 @@ namespace DiscoData2API.Controllers
         /// <response code="200">Returns view schema</response>
         /// <response code="404">If the view is not found</response>
         /// <response code="408">If the request times out</response>
-        [HttpGet("views/{viewId}")]
+        [HttpGet("views/{viewId}/schema")]
         public async Task<ActionResult> GetView(string viewId)
         {
             var view = await _mongoService.GetViewByIdAsync(viewId);
@@ -192,210 +188,10 @@ namespace DiscoData2API.Controllers
             }
         }
 
-        private const string DremioBasePath = "discoData";
-        private const string DremioTier = "gold";
-        private const string AnonymousOwner = "Anonymous";
-
-        /// <summary>Create a new view in Dremio and register it in MongoDB</summary>
-        /// <param name="request">View name, SQL, and optional owner ID</param>
-        /// <response code="201">View created successfully</response>
-        /// <response code="400">Invalid request or Dremio error</response>
-        /// <response code="404">Owner not found</response>
-        [HttpPost("views")]
-        public async Task<ActionResult> CreateView([FromBody] CreateViewRequest request)
-        {
-            string ownerName = AnonymousOwner;
-            string? ownerId = null;
-
-            if (!string.IsNullOrWhiteSpace(request.OwnerId))
-            {
-                var (owner, _) = await _mongoService.GetViewsByOwnerIdAsync(request.OwnerId);
-                if (owner == null)
-                    return NotFound($"Owner '{request.OwnerId}' not found.");
-                ownerName = owner.Name;
-                ownerId = owner.Id;
-            }
-
-            var dremioPath = new[] { DremioBasePath, DremioTier, ownerName, request.ViewName };
-            var viewPath = string.Join(".", dremioPath);
-
-            try
-            {
-                await _dremioService.ApiPost<object>("catalog", new
-                {
-                    entityType = "dataset",
-                    type = "VIRTUAL_DATASET",
-                    path = dremioPath,
-                    sql = request.Sql,
-                    sqlContext = new[] { DremioBasePath, DremioTier, ownerName }
-                });
-
-                _logger.LogInformation("Created Dremio view at {Path}", viewPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create Dremio view at {Path}", viewPath);
-                return BadRequest($"Dremio error: {ex.Message}");
-            }
-
-            var viewDoc = new ViewDocument
-            {
-                OwnerId = ownerId ?? string.Empty,
-                Path = viewPath,
-                Description = request.Description,
-                IsActive = true,
-                Template = null
-            };
-
-            await _mongoService.InsertViewAsync(viewDoc);
-
-            return CreatedAtAction(null, null, new
-            {
-                id = viewDoc.Id,
-                name = viewDoc.Name,
-                path = viewDoc.Path,
-                owner = ownerName
-            });
-        }
-
-        /// <summary>Delete a view from Dremio and soft-delete it in MongoDB</summary>
-        /// <param name="viewId">MongoDB view ID</param>
-        /// <response code="204">View deleted</response>
-        /// <response code="404">View not found</response>
-        [HttpDelete("views/{viewId}")]
-        public async Task<ActionResult> DeleteView(string viewId)
-        {
-            var view = await _mongoService.GetViewByIdAsync(viewId);
-            if (view == null)
-                return NotFound($"View '{viewId}' not found.");
-
-            try
-            {
-                var entity = await _dremioService.ApiGet<DremioEntityResponse>($"catalog/by-path/{view.Path.Replace('.', '/')}");
-                await _dremioService.ApiDelete($"catalog/{entity.Id}");
-                _logger.LogInformation("Deleted Dremio view {Path}", view.Path);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not delete Dremio view {Path}, removing from MongoDB only", view.Path);
-            }
-
-            await _mongoService.DeleteViewAsync(viewId);
-            return NoContent();
-        }
-
         #region helper
 
-        private static readonly HashSet<string> _allowedAggregateFunctions = new(StringComparer.OrdinalIgnoreCase)
-            { "COUNT", "SUM", "AVG", "MIN", "MAX", "DATE_TRUNC" };
-        private static readonly HashSet<string> _allowedGranularities = new(StringComparer.OrdinalIgnoreCase)
-            { "day", "week", "month", "quarter", "year" };
-
         private string BuildDirectQuery(string dataset, string[]? fields, int? limit, int? offset, FilterDefinition[]? filters, string[]? groupBy = null, AggregateDefinition[]? aggregates = null)
-        {
-            var quotedTable = string.Join(".", dataset.Split('.').Select(p => $"\"{p}\""));
-            var selectedFields = fields != null && fields.Length > 0
-                ? string.Join(", ", fields.Select(f => $"\"{f}\""))
-                : "*";
-            limit = limit.HasValue && limit != 0 ? limit.Value : _defaultLimit;
-
-            // Build aggregate expressions
-            if (aggregates != null && aggregates.Length > 0)
-            {
-                var aggExpressions = aggregates.Select(a =>
-                {
-                    if (!_allowedAggregateFunctions.Contains(a.Function))
-                        throw new SQLFormattingException($"Aggregate function '{a.Function}' is not allowed.");
-
-                    var func = a.Function.ToUpperInvariant();
-                    var field = a.Field == "*" ? "*" : $"\"{a.Field}\"";
-                    string expr;
-
-                    if (func == "DATE_TRUNC")
-                    {
-                        if (string.IsNullOrWhiteSpace(a.Granularity) || !_allowedGranularities.Contains(a.Granularity))
-                            throw new SQLFormattingException($"DATE_TRUNC requires a valid granularity (day, week, month, quarter, year).");
-                        expr = $"DATE_TRUNC('{a.Granularity.ToLowerInvariant()}', {field})";
-                    }
-                    else
-                    {
-                        expr = $"{func}({field})";
-                    }
-
-                    return string.IsNullOrWhiteSpace(a.Alias) ? expr : $"{expr} AS \"{a.Alias}\"";
-                });
-
-                var fieldsPart = selectedFields == "*" ? "" : selectedFields + ", ";
-                selectedFields = fieldsPart + string.Join(", ", aggExpressions);
-            }
-
-            var query = $"SELECT {selectedFields} FROM {quotedTable}";
-
-            if (filters != null && filters.Length > 0)
-            {
-                var filterClause = string.Join(" ", filters.Select(BuildFilterClause));
-                query += $" WHERE 1=1 {filterClause}";
-            }
-
-            if (groupBy != null && groupBy.Length > 0)
-                query += $" GROUP BY {string.Join(", ", groupBy.Select(g => $"\"{g}\""))}";
-
-            query += $" LIMIT {limit}";
-
-            if (offset.HasValue && offset > 0)
-                query += $" OFFSET {offset}";
-
-            if (!SQLExtensions.ValidateSQL(query))
-            {
-                _logger.LogWarning("SQL query contains unsafe keywords.");
-                throw new SQLFormattingException("SQL query contains unsafe keywords.");
-            }
-
-            return query;
-        }
-
-        private static string BuildFilterClause(FilterDefinition filter)
-        {
-            var values = filter.Values?.Select(QuoteValue).ToArray() ?? [];
-
-            return filter.Condition.ToUpper().Trim() switch
-            {
-                "BETWEEN" => $" {filter.Concat} (\"{filter.FieldName}\" BETWEEN {string.Join(" AND ", values)})",
-                "IN"      => $" {filter.Concat} (\"{filter.FieldName}\" IN ({string.Join(", ", values)}))",
-                _         => $" {filter.Concat} (\"{filter.FieldName}\" {filter.Condition} {string.Join(", ", values)})"
-            };
-        }
-
-        private static string QuoteValue(string value)
-        {
-            if (value.Equals("NULL", StringComparison.OrdinalIgnoreCase))
-                return "NULL";
-            if (value.StartsWith('\'') && value.EndsWith('\'') && value.Length >= 2)
-                return value;
-            if (double.TryParse(value, System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out _))
-                return value;
-            return $"'{value.Replace("'", "''")}'";
-        }
-
-        public class CreateViewRequest
-        {
-            [Required]
-            public string ViewName { get; set; } = null!;
-
-            [Required]
-            public string Sql { get; set; } = null!;
-
-            public string? OwnerId { get; set; }
-
-            public string? Description { get; set; }
-        }
-
-        private class DremioEntityResponse
-        {
-            [JsonPropertyName("id")]
-            public string Id { get; set; } = null!;
-        }
+            => SqlHelper.BuildQuery(dataset, _defaultLimit, fields, limit, offset, filters, groupBy, aggregates);
 
         #endregion
     }

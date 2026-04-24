@@ -34,6 +34,9 @@ namespace DiscoData2API.Model
 
         public string Name => Path.Split('.').Last();
 
+        [BsonElement("displayName")]
+        public string? DisplayName { get; set; }
+
         [BsonElement("description")]
         public string? Description { get; set; }
 

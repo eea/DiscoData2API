@@ -128,6 +128,16 @@ namespace DiscoData2API.Services
             return view;
         }
 
+        public async Task<bool> UpdateViewAsync(string viewId, string? displayName, string? description)
+        {
+            var updates = new List<UpdateDefinition<ViewDocument>>();
+            if (displayName != null) updates.Add(Builders<ViewDocument>.Update.Set(v => v.DisplayName, displayName));
+            if (description != null) updates.Add(Builders<ViewDocument>.Update.Set(v => v.Description, description));
+            if (updates.Count == 0) return false;
+            var result = await _views.UpdateOneAsync(v => v.Id == viewId, Builders<ViewDocument>.Update.Combine(updates));
+            return result.ModifiedCount > 0;
+        }
+
         /// <summary>Soft-delete a view by MongoDB view ID</summary>
         public async Task<bool> DeleteViewAsync(string viewId)
         {

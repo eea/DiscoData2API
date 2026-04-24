@@ -449,6 +449,35 @@ namespace DiscoData2API.Services
             return string.IsNullOrWhiteSpace(json) ? default : JsonSerializer.Deserialize<T>(json);
         }
 
+        public async Task<T?> ApiPut<T>(string endpoint, object body)
+        {
+            var token = await Authenticate();
+            var url = $"{_dremioServerAuth}/api/v3/{endpoint}";
+            var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            using var request = new HttpRequestMessage(HttpMethod.Put, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Content = content;
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            return string.IsNullOrWhiteSpace(json) ? default : JsonSerializer.Deserialize<T>(json);
+        }
+
+        public async Task ApiPutRaw(string endpoint, string jsonBody)
+        {
+            var token = await Authenticate();
+            var url = $"{_dremioServerAuth}/api/v3/{endpoint}";
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            using var request = new HttpRequestMessage(HttpMethod.Put, url);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Content = content;
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+
         public async Task ApiDelete(string endpoint)
         {
             var token = await Authenticate();

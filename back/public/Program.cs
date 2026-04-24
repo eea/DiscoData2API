@@ -32,7 +32,6 @@ builder.Services.AddSingleton<QueryThrottlingService>();
 builder.Services.AddSingleton<CircuitBreakerService>();
 builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
-builder.Services.AddSingleton<DremioServiceBeta>();
 builder.Services.UseHttpClientMetrics();
 
 builder.Services.AddResponseCompression(options =>
@@ -51,6 +50,7 @@ builder.Services.Configure<GzipCompressionProviderOptions>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient();
+string[] swaggerControllerOrder = ["DataProduct", "DataCatalog", "Dremio"];
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -64,6 +64,25 @@ builder.Services.AddSwaggerGen(options =>
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+
+    options.OrderActionsBy(api =>
+    {
+        var controllerIndex = Array.IndexOf(swaggerControllerOrder, api.ActionDescriptor.RouteValues["controller"]);
+        var path = api.RelativePath ?? "";
+        var method = api.HttpMethod ?? "";
+        // Push GET/POST on views/{viewId} (no suffix) to the end
+        var isExecute = path.Contains("views/") && path.EndsWith("/data");
+        var slot = isExecute ? $"z_{method}" : $"a_{path}";
+        return $"{controllerIndex}_{slot}";
+    });
+
+    options.TagActionsBy(api => api.ActionDescriptor.RouteValues["controller"] switch
+    {
+        "DataProduct" => ["DataProduct (Gold)"],
+        "DataCatalog" => ["DataCatalog (Silver)"],
+        "Dremio"      => ["Dremio"],
+        var other     => [other ?? "Other"]
+    });
 });
 
 var app = builder.Build();
