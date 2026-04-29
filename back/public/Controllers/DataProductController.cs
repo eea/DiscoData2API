@@ -31,7 +31,7 @@ namespace DiscoData2API.Controllers
             if (owners.Count == 0)
                 return NotFound("No data products found.");
 
-            return Ok(owners.Select(o => new { id = o.Id, name = o.Name }));
+            return Ok(owners.Select(o => new { id = o.Id, name = o.Name, displayName = o.DisplayName }));
         }
 
         /// <summary>Get all views for a given owner with their query templates (MONGO)</summary>

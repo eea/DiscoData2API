@@ -14,8 +14,17 @@ namespace DiscoData2API.Model
         [BsonElement("name")]
         public string Name { get; set; } = null!;
 
+        [BsonElement("displayName")]
+        public string? DisplayName { get; set; }
+
         [BsonElement("isActive")]
         public bool IsActive { get; set; }
+
+        [BsonElement("createdAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [BsonElement("updatedAt")]
+        public DateTime UpdatedAt { get; set; }
     }
 
     [BsonIgnoreExtraElements]

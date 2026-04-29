@@ -147,6 +147,13 @@ namespace DiscoData2API.Services
             return result.ModifiedCount > 0;
         }
 
+        /// <summary>Insert a new owner document</summary>
+        public async Task<OwnerDocument> InsertOwnerAsync(OwnerDocument owner)
+        {
+            await _owners.InsertOneAsync(owner);
+            return owner;
+        }
+
         /// <summary>Get owner by name</summary>
         public async Task<OwnerDocument?> GetOwnerByNameAsync(string name)
         {
