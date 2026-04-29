@@ -20,6 +20,26 @@ namespace DiscoData2API.Controllers
         private const string DremioTier = "gold";
         private const string AnonymousOwner = "Anonymous";
 
+        /// <summary>Create a new owner, or return the existing one if the name is already taken</summary>
+        /// <param name="request">Owner name</param>
+        /// <response code="200">Owner already existed, returned as-is</response>
+        /// <response code="201">Owner created</response>
+        [HttpPost("owners")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateOwner([FromBody] CreateOwnerRequest request)
+        {
+            var existing = await _mongoService.GetOwnerByNameAsync(request.Name);
+            if (existing != null)
+                return Ok(new { id = existing.Id, name = existing.Name, displayName = existing.DisplayName });
+
+            var now = DateTime.UtcNow;
+            var owner = new OwnerDocument { Name = request.Name, DisplayName = request.DisplayName, IsActive = true, CreatedAt = now, UpdatedAt = now };
+            await _mongoService.InsertOwnerAsync(owner);
+
+            return Created($"/api/data-products/owners/{owner.Id}", new { id = owner.Id, name = owner.Name, displayName = owner.DisplayName });
+        }
+
         /// <summary>Create a new view in Dremio and register it in MongoDB</summary>
         /// <param name="request">View name, SQL, and optional owner ID</param>
         /// <response code="201">View created successfully</response>
@@ -282,6 +302,14 @@ namespace DiscoData2API.Controllers
 
 
         #region helper
+
+        public class CreateOwnerRequest
+        {
+            [Required]
+            public string Name { get; set; } = null!;
+
+            public string? DisplayName { get; set; }
+        }
 
         public class CreateViewRequest
         {
