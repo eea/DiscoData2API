@@ -26,12 +26,15 @@ Log.Logger = new LoggerConfiguration()
 // Add Serilog to the logging system
 builder.Host.UseSerilog();
 builder.Services.Configure<ConnectionSettingsMongo>(builder.Configuration.GetSection("MongoSettings"));
-builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
-builder.Services.AddSingleton<FlightClientPool>();
-builder.Services.AddSingleton<QueryThrottlingService>();
-builder.Services.AddSingleton<CircuitBreakerService>();
-builder.Services.AddSingleton<DremioService>();
 builder.Services.AddSingleton<MongoService>();
+
+// Dremio services — commented out, query execution moved to DuckDB sidecar
+// builder.Services.Configure<ConnectionSettingsDremio>(builder.Configuration.GetSection("DremioSettings"));
+// builder.Services.AddSingleton<FlightClientPool>();
+// builder.Services.AddSingleton<QueryThrottlingService>();
+// builder.Services.AddSingleton<CircuitBreakerService>();
+// builder.Services.AddSingleton<DremioService>();
+
 builder.Services.UseHttpClientMetrics();
 
 builder.Services.AddResponseCompression(options =>
@@ -50,16 +53,17 @@ builder.Services.Configure<GzipCompressionProviderOptions>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient();
-string[] swaggerControllerOrder = ["DataProduct", "DataCatalog", "Dremio"];
+string[] swaggerControllerOrder = ["DataCatalog", "PublishedDataset", "SavedQuery"];
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "DiscoData API (Public)",
-        Version = "v2.0",
-        Description = @"Public API for Querying Dremio DiscoData.<br>
-        This API allows you to browse folders and Virtual Datasets (VDS) available in the DiscoData Gold space, inspect their schema, and query them with optional field selection and filters.<br>
-        <strong>Note:</strong> The legacy Views endpoints are deprecated and will be removed in a future release. Use the <em>/api/data-product</em> endpoints instead.",
+        Title = "DiscoData API",
+        Version = "v3.0",
+        Description = @"API for the DiscoData published layer.<br>
+        <strong>Owners</strong> — identity registration.<br>
+        <strong>Published</strong> — catalog of published datasets (Parquet on object storage).<br>
+        <strong>Saved Queries</strong> — user-saved DuckDB queries stored in MongoDB.",
     });
 
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -69,19 +73,15 @@ builder.Services.AddSwaggerGen(options =>
     {
         var controllerIndex = Array.IndexOf(swaggerControllerOrder, api.ActionDescriptor.RouteValues["controller"]);
         var path = api.RelativePath ?? "";
-        var method = api.HttpMethod ?? "";
-        // Push GET/POST on views/{viewId} (no suffix) to the end
-        var isExecute = path.Contains("views/") && path.EndsWith("/data");
-        var slot = isExecute ? $"z_{method}" : $"a_{path}";
-        return $"{controllerIndex}_{slot}";
+        return $"{controllerIndex}_{path}";
     });
 
     options.TagActionsBy(api => api.ActionDescriptor.RouteValues["controller"] switch
     {
-        "DataProduct" => ["DataProduct (Gold)"],
-        "DataCatalog" => ["DataCatalog (Silver)"],
-        "Dremio"      => ["Dremio"],
-        var other     => [other ?? "Other"]
+        "DataCatalog"      => ["Owners"],
+        "PublishedDataset" => ["Published (Catalog)"],
+        "SavedQuery"       => ["Saved Queries"],
+        var other          => [other ?? "Other"]
     });
 });
 
@@ -93,7 +93,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSwagger();
-//app.UseSwaggerUI();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
@@ -104,6 +103,5 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.UseMetricServer();
-//Metrics.SuppressDefaultMetrics();
 app.UsePrometheusMiddleware();
 app.Run();

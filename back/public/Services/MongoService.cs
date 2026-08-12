@@ -15,6 +15,8 @@ namespace DiscoData2API.Services
         private readonly IMongoCollection<MongoDocument> _collection;
         private readonly IMongoCollection<OwnerDocument> _owners;
         private readonly IMongoCollection<ViewDocument> _views;
+        private readonly IMongoCollection<SavedQueryDocument> _savedQueries;
+        private readonly IMongoCollection<PublishedDatasetDocument> _publishedDatasets;
 
         public MongoService(IOptions<ConnectionSettingsMongo> mongoSettings, ILogger<MongoService> logger)
         {
@@ -25,6 +27,8 @@ namespace DiscoData2API.Services
             _collection = database.GetCollection<MongoDocument>(mongoSettings.Value.CollectionName);
             _owners = discoDataDatabase.GetCollection<OwnerDocument>("owners");
             _views = discoDataDatabase.GetCollection<ViewDocument>("views");
+            _savedQueries = discoDataDatabase.GetCollection<SavedQueryDocument>("savedQueries");
+            _publishedDatasets = discoDataDatabase.GetCollection<PublishedDatasetDocument>("publishedDatasets");
         }
 
         /// <summary>
@@ -154,6 +158,20 @@ namespace DiscoData2API.Services
             return owner;
         }
 
+        /// <summary>Get owner by ID</summary>
+        public async Task<OwnerDocument?> GetOwnerByIdAsync(string ownerId)
+        {
+            try
+            {
+                return await _owners.Find(o => o.Id == ownerId && o.IsActive).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting owner {OwnerId}", ownerId);
+                return null;
+            }
+        }
+
         /// <summary>Get owner by name</summary>
         public async Task<OwnerDocument?> GetOwnerByNameAsync(string name)
         {
@@ -172,6 +190,142 @@ namespace DiscoData2API.Services
                 _logger.LogError(ex, "Error while getting view {ViewId}", viewId);
                 return null;
             }
+        }
+
+        // ── Saved Queries ──
+
+        /// <summary>Insert a new saved query</summary>
+        public async Task<SavedQueryDocument> InsertSavedQueryAsync(SavedQueryDocument doc)
+        {
+            await _savedQueries.InsertOneAsync(doc);
+            return doc;
+        }
+
+        /// <summary>Get a saved query by ID</summary>
+        public async Task<SavedQueryDocument?> GetSavedQueryByIdAsync(string id)
+        {
+            try
+            {
+                return await _savedQueries.Find(q => q.Id == id && q.IsActive).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting saved query {Id}", id);
+                return null;
+            }
+        }
+
+        /// <summary>Get all saved queries for an owner</summary>
+        public async Task<List<SavedQueryDocument>> GetSavedQueriesByOwnerAsync(string ownerId)
+        {
+            try
+            {
+                return await _savedQueries.Find(q => q.OwnerId == ownerId && q.IsActive).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting saved queries for owner {OwnerId}", ownerId);
+                return [];
+            }
+        }
+
+        /// <summary>Update a saved query's SQL and/or metadata</summary>
+        public async Task<bool> UpdateSavedQueryAsync(string id, string? displayName, string? description, string? sql, List<LogicalRef>? logicalRefs)
+        {
+            var updates = new List<UpdateDefinition<SavedQueryDocument>>();
+            if (displayName != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.DisplayName, displayName));
+            if (description != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.Description, description));
+            if (sql != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.Sql, sql));
+            if (logicalRefs != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.LogicalRefs, logicalRefs));
+            if (updates.Count == 0) return false;
+            updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.UpdatedAt, DateTime.UtcNow));
+            var result = await _savedQueries.UpdateOneAsync(q => q.Id == id && q.IsActive, Builders<SavedQueryDocument>.Update.Combine(updates));
+            return result.ModifiedCount > 0;
+        }
+
+        /// <summary>Soft-delete a saved query</summary>
+        public async Task<bool> DeleteSavedQueryAsync(string id)
+        {
+            var result = await _savedQueries.UpdateOneAsync(
+                q => q.Id == id,
+                Builders<SavedQueryDocument>.Update.Set(q => q.IsActive, false));
+            return result.ModifiedCount > 0;
+        }
+
+        // ── Published Datasets ──
+
+        /// <summary>List all active published datasets</summary>
+        public async Task<List<PublishedDatasetDocument>> GetPublishedDatasetsAsync()
+        {
+            try
+            {
+                return await _publishedDatasets.Find(d => d.IsActive).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting published datasets");
+                return [];
+            }
+        }
+
+        /// <summary>Get a published dataset by dataset + table + version</summary>
+        public async Task<PublishedDatasetDocument?> GetPublishedDatasetAsync(string dataset, string table, string version = "latest")
+        {
+            try
+            {
+                return await _publishedDatasets.Find(d =>
+                    d.Dataset == dataset && d.Table == table && d.Version == version && d.IsActive
+                ).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting published dataset {Dataset}.{Table}@{Version}", dataset, table, version);
+                return null;
+            }
+        }
+
+        /// <summary>Get all tables for a given dataset (schema)</summary>
+        public async Task<List<PublishedDatasetDocument>> GetPublishedTablesByDatasetAsync(string dataset)
+        {
+            try
+            {
+                return await _publishedDatasets.Find(d =>
+                    d.Dataset == dataset && d.Version == "latest" && d.IsActive
+                ).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while getting published tables for dataset {Dataset}", dataset);
+                return [];
+            }
+        }
+
+        /// <summary>Upsert a published dataset entry (used by the promotion job)</summary>
+        public async Task UpsertPublishedDatasetAsync(PublishedDatasetDocument doc)
+        {
+            var filter = Builders<PublishedDatasetDocument>.Filter.Where(d =>
+                d.Dataset == doc.Dataset && d.Table == doc.Table && d.Version == doc.Version);
+
+            var existing = await _publishedDatasets.Find(filter).FirstOrDefaultAsync();
+            if (existing != null)
+            {
+                doc.Id = existing.Id;
+                await _publishedDatasets.ReplaceOneAsync(filter, doc);
+            }
+            else
+            {
+                doc.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+                await _publishedDatasets.InsertOneAsync(doc);
+            }
+        }
+
+        /// <summary>Soft-delete a published dataset (unpublish)</summary>
+        public async Task<bool> UnpublishDatasetAsync(string dataset, string table, string version)
+        {
+            var result = await _publishedDatasets.UpdateOneAsync(
+                d => d.Dataset == dataset && d.Table == table && d.Version == version,
+                Builders<PublishedDatasetDocument>.Update.Set(d => d.IsActive, false));
+            return result.ModifiedCount > 0;
         }
     }
 }
