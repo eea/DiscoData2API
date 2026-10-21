@@ -65,9 +65,13 @@ namespace DiscoData2API.Controllers
             if (doc == null)
                 return NotFound($"Saved query '{id}' not found.");
 
+            var owner = await _mongoService.GetOwnerByIdAsync(doc.OwnerId);
+
             return Ok(new
             {
                 id = doc.Id,
+                ownerId = doc.OwnerId,
+                owner = owner?.Name,
                 displayName = doc.DisplayName,
                 description = doc.Description,
                 sql = doc.Sql,
@@ -105,11 +109,12 @@ namespace DiscoData2API.Controllers
             });
         }
 
-        /// <summary>Update a saved query's SQL and/or metadata</summary>
+        /// <summary>Update a saved query's SQL and/or metadata. Setting ownerName claims an Anonymous query for that owner.</summary>
         /// <param name="id">Saved query ID</param>
         /// <param name="request">Fields to update</param>
         /// <response code="200">Saved query updated</response>
-        /// <response code="404">Saved query not found</response>
+        /// <response code="404">Saved query or new owner not found</response>
+        /// <response code="409">Query already belongs to a named owner and cannot be claimed</response>
         [HttpPut("{id}")]
         public async Task<ActionResult> Update(string id, [FromBody] UpdateSavedQueryRequest request)
         {
@@ -117,11 +122,32 @@ namespace DiscoData2API.Controllers
             if (existing == null)
                 return NotFound($"Saved query '{id}' not found.");
 
-            await _mongoService.UpdateSavedQueryAsync(id, request.DisplayName, request.Description, request.Sql, request.LogicalRefs);
+            var currentOwner = await _mongoService.GetOwnerByIdAsync(existing.OwnerId);
+            var ownerName = currentOwner?.Name;
+            string? newOwnerId = null;
+
+            if (!string.IsNullOrWhiteSpace(request.OwnerName) && request.OwnerName != ownerName)
+            {
+                // Only anonymous queries can change hands; a named owner's query is never moved.
+                if (ownerName != AnonymousOwner)
+                    return Conflict($"Saved query '{id}' belongs to '{ownerName}' and cannot be claimed.");
+
+                var newOwner = await _mongoService.GetOwnerByNameAsync(request.OwnerName);
+                if (newOwner == null)
+                    return NotFound($"Owner '{request.OwnerName}' not found.");
+
+                newOwnerId = newOwner.Id;
+                ownerName = newOwner.Name;
+                _logger.LogInformation("Saved query {Id} claimed by owner {Owner}", id, ownerName);
+            }
+
+            await _mongoService.UpdateSavedQueryAsync(id, request.DisplayName, request.Description, request.Sql, request.LogicalRefs, newOwnerId);
 
             return Ok(new
             {
                 id,
+                ownerId = newOwnerId ?? existing.OwnerId,
+                owner = ownerName,
                 displayName = request.DisplayName ?? existing.DisplayName,
                 description = request.Description ?? existing.Description
             });
@@ -161,6 +187,9 @@ namespace DiscoData2API.Controllers
             public string? DisplayName { get; set; }
             public string? Description { get; set; }
             public List<LogicalRef>? LogicalRefs { get; set; }
+
+            /// <summary>Claim an Anonymous query for this owner. Ignored if unchanged.</summary>
+            public string? OwnerName { get; set; }
         }
 
         #endregion
