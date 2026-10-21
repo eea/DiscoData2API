@@ -66,6 +66,15 @@ builder.Services.AddSwaggerGen(options =>
         <strong>Saved Queries</strong> — user-saved DuckDB queries stored in MongoDB.",
     });
 
+    options.AddSecurityDefinition(WriteKeyOperationFilter.SchemeId, new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = RequireWriteKeyAttribute.HeaderName,
+        Description = "Shared key required for writes (saved queries, published catalog)."
+    });
+    options.OperationFilter<WriteKeyOperationFilter>();
+
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 

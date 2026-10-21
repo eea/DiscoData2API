@@ -1,3 +1,4 @@
+using DiscoData2API.Misc;
 using DiscoData2API.Services;
 using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
@@ -113,6 +114,7 @@ namespace DiscoData2API.Controllers
         /// <summary>Upsert a published dataset entry. Used by the S3 catalog scanner.</summary>
         /// <response code="200">Entry upserted</response>
         [HttpPut("{dataset}/{table}")]
+        [RequireWriteKey]
         public async Task<ActionResult> Upsert(string dataset, string table, [FromBody] UpsertPublishedDatasetRequest body)
         {
             var doc = new PublishedDatasetDocument

@@ -1,4 +1,5 @@
 using DiscoData2API.Services;
+using DiscoData2API.Misc;
 using DiscoData2API.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -19,6 +20,7 @@ namespace DiscoData2API.Controllers
         /// <response code="201">Saved query created</response>
         /// <response code="404">Owner not found</response>
         [HttpPost]
+        [RequireWriteKey]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesDefaultResponseType]
         public async Task<ActionResult> Create([FromBody] CreateSavedQueryRequest request)
@@ -116,6 +118,7 @@ namespace DiscoData2API.Controllers
         /// <response code="404">Saved query or new owner not found</response>
         /// <response code="409">Query already belongs to a named owner and cannot be claimed</response>
         [HttpPut("{id}")]
+        [RequireWriteKey]
         public async Task<ActionResult> Update(string id, [FromBody] UpdateSavedQueryRequest request)
         {
             var existing = await _mongoService.GetSavedQueryByIdAsync(id);
@@ -158,6 +161,7 @@ namespace DiscoData2API.Controllers
         /// <response code="204">Saved query deleted</response>
         /// <response code="404">Saved query not found</response>
         [HttpDelete("{id}")]
+        [RequireWriteKey]
         public async Task<ActionResult> Delete(string id)
         {
             var deleted = await _mongoService.DeleteSavedQueryAsync(id);
