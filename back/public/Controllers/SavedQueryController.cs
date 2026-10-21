@@ -105,6 +105,8 @@ namespace DiscoData2API.Controllers
                     id = q.Id,
                     displayName = q.DisplayName,
                     description = q.Description,
+                    sql = q.Sql,
+                    logicalRefs = q.LogicalRefs,
                     createdAt = q.CreatedAt,
                     updatedAt = q.UpdatedAt
                 })
