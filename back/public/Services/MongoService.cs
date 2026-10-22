@@ -230,9 +230,10 @@ namespace DiscoData2API.Services
         }
 
         /// <summary>Update a saved query's SQL and/or metadata</summary>
-        public async Task<bool> UpdateSavedQueryAsync(string id, string? displayName, string? description, string? sql, List<LogicalRef>? logicalRefs)
+        public async Task<bool> UpdateSavedQueryAsync(string id, string? displayName, string? description, string? sql, List<LogicalRef>? logicalRefs, string? ownerId = null)
         {
             var updates = new List<UpdateDefinition<SavedQueryDocument>>();
+            if (ownerId != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.OwnerId, ownerId));
             if (displayName != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.DisplayName, displayName));
             if (description != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.Description, description));
             if (sql != null) updates.Add(Builders<SavedQueryDocument>.Update.Set(q => q.Sql, sql));

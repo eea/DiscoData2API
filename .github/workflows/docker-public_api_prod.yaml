@@ -25,11 +25,13 @@ jobs:
           --arg dpwd "$DREMIO_PWD" \
           --arg dserver "$DREMIO_SERVER" \
           --arg dauth "$DREMIO_SERVER_AUTH" \
+          --arg wkey "$WRITE_API_KEY" \
           '.MongoSettings.ConnectionString = $mongo |
            .DremioSettings.Username = $duser |
            .DremioSettings.Password = $dpwd |
            .DremioSettings.DremioServer = $dserver |
-           .DremioSettings.DremioServerAuth = $dauth' \
+           .DremioSettings.DremioServerAuth = $dauth |
+           .WriteApiKey = $wkey' \
           Configs/appsettings_prod.json > Configs/appsettings_prod.tmp.json && \
         mv Configs/appsettings_prod.tmp.json Configs/appsettings_prod.json      
       
@@ -39,6 +41,7 @@ jobs:
         DREMIO_PWD: ${{ secrets.DREMIO_PWD }}
         DREMIO_SERVER: ${{ secrets.DREMIO_SERVER }}
         DREMIO_SERVER_AUTH: ${{ secrets.DREMIO_SERVER_AUTH }}
+        WRITE_API_KEY: ${{ secrets.WRITE_API_KEY }}
 
     - name: Build the Docker image
       working-directory:  back/
