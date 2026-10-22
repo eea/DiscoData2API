@@ -1,0 +1,24 @@
+{
+      "version": "0.2.0",
+      "configurations": [
+            {
+                  "name": "Public API (web)",
+                  "type": "coreclr",
+                  "request": "launch",
+                  "preLaunchTask": "build public",
+                  "program": "${workspaceFolder}/back/public/bin/Debug/net8.0/DiscoData2API.dll",
+                  "args": [],
+                  "cwd": "${workspaceFolder}/back/public",
+                  "stopAtEntry": false,
+                  "serverReadyAction": {
+                        "action": "openExternally",
+                        "pattern": "\bNow listening on:\s+(https?://\S+)",
+                        "uriFormat": "%s/swagger/index.html"
+                  },
+                  "env": {
+                        "ASPNETCORE_ENVIRONMENT": "Development",
+                        "ASPNETCORE_URLS": "https://localhost:7181;http://localhost:5205"
+                  }
+            }
+      ]
+}
