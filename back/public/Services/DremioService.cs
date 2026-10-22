@@ -328,7 +328,7 @@ namespace DiscoData2API.Services
             }
             catch
             {
-                throw;
+                throw;    
             }
             if (string.IsNullOrEmpty(token))
                 throw new Exception("Cannot connect to Dremio server");
